@@ -1,0 +1,12 @@
+torch
+torchaudio
+transformers
+datasets[audio]
+soundfile
+librosa
+matplotlib
+numpy
+scipy
+pesq
+pystoi
+pytest
