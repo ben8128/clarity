@@ -127,6 +127,37 @@ proxy only.
 Mouth-to-ear budget for future calls: 80 (frame) + ~49 (codec) + network —
 ~200-300 ms is plausible, matching the plan's assumption.
 
+## R-track — Receiver-Side Studio Reconstruction (started 2026-07-03)
+
+### 10 — Eval harness self-test (2026-07-03)
+
+Source: `10_harness_selftest_*_latest.json` (dry-run speaker). All expected
+orderings hold: clean upper anchor DNSMOS 3.50 vs source 2.81; passthrough
+F0 corr exactly 1.000; cb32 > cb4 everywhere. The gap reconstruction must
+close: Mimi-32 of a degraded message reaches only DNSMOS 2.94.
+
+### 11 — Decode-then-Convert, zero training (2026-07-03)
+
+Source: `11_summary_latest.json` (dry-run speaker, 8 messages, 4.5-min
+reference bank — expect everything to improve on Ben's studio hours)
+
+| arm | SIM | DNSMOS (src 2.76) | WER | F0 corr |
+|---|---|---|---|---|
+| wire cb4 alone | 0.497 | 2.93 | 0.176 | 0.930 |
+| **cb4 → kNN-VC** | **0.800** | **3.22** | 0.203 | 0.844 |
+| cb1 → kNN-VC | 0.608 | 2.46 | 0.914 | 0.006 |
+| degraded → kNN-VC (no wire) | 0.824 | 3.15 | 0.031 | 0.865 |
+| Mimi-32 (4.4 kbps) | 0.797 | 2.91 | 0.041 | 0.985 |
+
+**Headline: a 550 bps wire + zero-training voice conversion matches
+Mimi-32's speaker similarity at 1/8th the bits with HIGHER quality — and
+beats the source microphone (DNSMOS 3.22 vs 2.76).** Route C works.
+
+Costs and reads: WER 0.20 comes from the wire (cb4) not the VC
+(degraded→VC WER is 0.03) — try cb8 wire; F0 corr 0.844 means the take is
+mostly but not exactly preserved — Route D (personal decoder, same tokens)
+should push that to ~0.99. Semantic-only cb1 is below this route's floor.
+
 ## Open items
 
 - **Listening test** (`experiments/listening_test.py`) — needs a human;
