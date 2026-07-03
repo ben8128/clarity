@@ -43,12 +43,12 @@ clarity-prototype/
 │   ├── pipeline.py        # End-to-end encode→transmit→decode pipeline
 │   └── utils.py           # Audio I/O, resampling, visualization helpers
 ├── experiments/           # Experiment scripts (one per experiment)
-│   ├── 01_token_separation.py
-│   ├── 02_semantic_only_reconstruction.py
+│   ├── 01_token_separation.py    # Codebook sweep (quality vs bandwidth)
 │   ├── 03_prosody_analysis.py
 │   ├── 04_speaker_embedding.py
 │   ├── 05_bandwidth_measurement.py
-│   └── 06_latency_benchmark.py
+│   ├── 06_latency_benchmark.py
+│   └── listening_test.py         # Subjective evaluation helper
 ├── notebooks/             # Jupyter notebooks for interactive exploration
 ├── results/               # Experiment outputs (plots, metrics, audio samples)
 │   └── .gitkeep
@@ -70,10 +70,21 @@ clarity-prototype/
 - Frame rate: 12.5 Hz (one frame every 80ms)
 - Codebook structure:
   - Codebook 0 (index 0): SEMANTIC tokens — linguistic/phonetic content
-  - Codebooks 1-7 (indices 1-7): ACOUSTIC tokens — timbre, prosody, voice characteristics
+  - Codebooks 1+ (indices 1-7 or 1-31): ACOUSTIC tokens — timbre, prosody, voice characteristics
 - Each codebook has 2,048 entries (11 bits per token)
-- Full bitrate: 12.5 × 8 × 11 = 1,100 bps
-- Semantic-only bitrate: 12.5 × 1 × 11 = 137.5 bps
+
+### Codebook Dial — Tunable Transmission
+The number of codebooks transmitted is a **tunable parameter** (1 to N):
+- 1 codebook (semantic only): 137.5 bps
+- 4 codebooks: 550 bps
+- 8 codebooks (paper spec): 1,100 bps
+- 32 codebooks (HF implementation): 4,400 bps
+- Opus voice (typical): 24,000 bps
+
+Even at ALL codebooks, Mimi is **96%+ smaller than Opus**. The goal is finding the
+**quality/bandwidth knee** — the sweet spot where adding another codebook stops
+meaningfully improving quality. Use `MimiCodec.get_bitrate(n)` to compute bitrate
+for any codebook count.
 
 ### Loading the model
 ```python
@@ -93,18 +104,17 @@ audio_codes = encoder_outputs.audio_codes  # shape: (batch, num_codebooks, num_f
 reconstructed = model.decode(audio_codes)
 ```
 
-### CRITICAL: Token separation for Clarity
+### CRITICAL: Configurable codebook reconstruction
 ```python
-# Extract semantic tokens only (codebook 0)
-semantic_tokens = audio_codes[:, 0:1, :]  # shape: (batch, 1, num_frames)
+# Reconstruct with first n codebooks (the core Clarity primitive)
+audio = codec.reconstruct_with_n_codebooks(tokens, n=4)  # keep codebooks 0-3
 
-# Extract acoustic tokens (codebooks 1-7)
-acoustic_tokens = audio_codes[:, 1:, :]   # shape: (batch, 7, num_frames)
+# Semantic-only is just n=1
+semantic_audio = codec.reconstruct_with_n_codebooks(tokens, n=1)
 
-# For semantic-only reconstruction, zero out acoustic tokens
-modified_codes = audio_codes.clone()
-modified_codes[:, 1:, :] = 0  # zero acoustic codebooks
-reconstructed = model.decode(modified_codes)
+# Bitrate and savings calculations
+bitrate = MimiCodec.get_bitrate(4)           # 550.0 bps
+savings = MimiCodec.get_bandwidth_savings_vs_opus(4)  # 0.977 (97.7%)
 ```
 
 ## Important Gotchas

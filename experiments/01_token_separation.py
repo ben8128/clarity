@@ -1,13 +1,9 @@
-"""Experiment 01: Token Separation Validation.
+"""Experiment 01: Codebook Sweep.
 
-Validates the core Clarity hypothesis — that Mimi's semantic tokens (codebook 0) alone
-produce intelligible speech.
-
-Produces four reconstructions:
-  (a) Full reconstruction (all codebooks) — baseline
-  (b) Semantic-only (codebook 0, rest zeroed) — the Clarity hypothesis
-  (c) Acoustic-only (codebook 0 zeroed, rest kept) — what we discard
-  (d) First-half semantic + second-half acoustic — boundary analysis
+Finds the quality/bandwidth knee by sweeping codebook count from 1 (semantic only)
+through all available codebooks.  For each count, measures PESQ, STOI, and speaker
+similarity against the original audio.  Averages metrics across multiple samples,
+produces a dual-axis plot, and detects the sweet-spot codebook count.
 """
 
 import sys
@@ -20,12 +16,15 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
-from src.quality import quality_report
+from src.quality import (
+    compute_pesq,
+    compute_stoi,
+    compute_speaker_similarity,
+    optimal_codebook_count,
+)
 from src.utils import (
-    audio_stats,
     download_librispeech_sample,
     load_audio,
-    plot_waveform_and_spectrogram,
     save_audio,
 )
 
@@ -33,156 +32,255 @@ RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 AUDIO_DIR = Path(__file__).resolve().parent.parent / "audio"
 
 
-def find_test_audio() -> tuple[np.ndarray, int]:
-    """Find a test audio file. Uses local audio if available, else downloads LibriSpeech."""
+def find_test_audio_samples(max_samples: int = 3) -> list[tuple[np.ndarray, int, str]]:
+    """Collect test audio samples. Uses local audio/ files first, falls back to LibriSpeech.
+
+    Returns:
+        List of (audio_array, sample_rate, label) tuples.
+    """
+    samples: list[tuple[np.ndarray, int, str]] = []
+
     # Look for local audio files
     if AUDIO_DIR.exists():
         for ext in ("*.wav", "*.mp3", "*.flac"):
-            files = list(AUDIO_DIR.glob(ext))
-            if files:
-                print(f"Using local audio: {files[0]}")
-                return load_audio(files[0], target_sr=24000)
+            for f in sorted(AUDIO_DIR.glob(ext)):
+                if len(samples) >= max_samples:
+                    break
+                audio, sr = load_audio(f, target_sr=24000)
+                samples.append((audio, sr, f.stem))
+                print(f"Loaded local audio: {f.name}")
 
-    # Fall back to LibriSpeech
-    print("No local audio found. Downloading LibriSpeech sample...")
-    return download_librispeech_sample()
+    # Fill remaining slots from LibriSpeech
+    if len(samples) < max_samples:
+        from datasets import load_dataset
+
+        print("Loading LibriSpeech samples...")
+        ds = load_dataset(
+            "hf-internal-testing/librispeech_asr_dummy",
+            "clean",
+            split="validation",
+            trust_remote_code=True,
+        )
+        from src.utils import resample
+
+        for idx in range(min(max_samples - len(samples), len(ds))):
+            sample = ds[idx]
+            audio = np.array(sample["audio"]["array"], dtype=np.float32)
+            orig_sr = sample["audio"]["sampling_rate"]
+            audio_24k = resample(audio, orig_sr, 24000)
+            samples.append((audio_24k, 24000, f"librispeech_{idx}"))
+            print(f"Loaded LibriSpeech sample {idx}: {len(audio_24k)/24000:.2f}s")
+
+    return samples
+
+
+def choose_sweep_points(num_codebooks: int) -> list[int]:
+    """Choose which codebook counts to sweep.
+
+    Sweeps 1–8 individually; if num_codebooks > 8, adds sampled points up to the max.
+    """
+    points = list(range(1, min(num_codebooks, 8) + 1))
+    if num_codebooks > 8:
+        extra = [n for n in [12, 16, 24, 32] if 8 < n < num_codebooks]
+        extra.append(num_codebooks)
+        points.extend(extra)
+    return sorted(set(points))
 
 
 def run_experiment():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     print("=" * 70)
-    print("EXPERIMENT 01: Token Separation Validation")
+    print("EXPERIMENT 01: Codebook Sweep")
     print("=" * 70)
 
-    # Step 1: Load audio
+    # Step 1: Load audio samples
     print("\n--- Step 1: Loading test audio ---")
-    audio, sr = find_test_audio()
-    stats = audio_stats(audio, sr)
-    print(f"Audio stats: {stats}")
+    samples = find_test_audio_samples()
+    if not samples:
+        print("ERROR: No audio samples found.")
+        return None
+    print(f"Using {len(samples)} sample(s): {[s[2] for s in samples]}")
 
-    # Step 2: Initialize codec and encode
-    print("\n--- Step 2: Encoding with Mimi ---")
+    # Step 2: Initialize codec and do a probe encode to learn codebook count
+    print("\n--- Step 2: Initializing Mimi codec ---")
     codec = MimiCodec(device="cpu")
-    tokens = codec.encode(audio, sr=sr)
-    info = codec.report_codebook_info(tokens)
-
-    # Step 3: Create four reconstructions
-    print("\n--- Step 3: Creating reconstructions ---")
-
-    # (a) Full reconstruction
-    print("  (a) Full reconstruction (all codebooks)...")
-    full_recon = codec.decode(tokens)
-
-    # (b) Semantic-only
-    print("  (b) Semantic-only (codebook 0, rest zeroed)...")
-    semantic_recon = codec.reconstruct_semantic_only(tokens)
-
-    # (c) Acoustic-only
-    print("  (c) Acoustic-only (codebook 0 zeroed, rest kept)...")
-    acoustic_recon = codec.reconstruct_acoustic_only(tokens)
-
-    # (d) First-half semantic + second-half acoustic
-    print("  (d) Half-half construction...")
-    num_frames = tokens.shape[2]
-    mid = num_frames // 2
-    half_tokens = tokens.clone()
-    # First half: keep only semantic (zero acoustic)
-    half_tokens[:, 1:, :mid] = 0
-    # Second half: keep only acoustic (zero semantic)
-    half_tokens[:, 0:1, mid:] = 0
-    half_recon = codec.decode(half_tokens)
-
-    # Step 4: Save all audio files
-    print("\n--- Step 4: Saving audio files ---")
-    save_audio(audio, RESULTS_DIR / f"01_original_{timestamp}.wav", sr)
-    save_audio(full_recon, RESULTS_DIR / f"01_full_reconstruction_{timestamp}.wav", sr)
-    save_audio(semantic_recon, RESULTS_DIR / f"01_semantic_only_{timestamp}.wav", sr)
-    save_audio(acoustic_recon, RESULTS_DIR / f"01_acoustic_only_{timestamp}.wav", sr)
-    save_audio(half_recon, RESULTS_DIR / f"01_half_half_{timestamp}.wav", sr)
-
-    # Step 5: Compute quality metrics
-    print("\n--- Step 5: Computing quality metrics ---")
-    reconstructions = {
-        "Full (all codebooks)": full_recon,
-        "Semantic-only (cb 0)": semantic_recon,
-        "Acoustic-only (cb 1+)": acoustic_recon,
-        "Half-half": half_recon,
-    }
-    metrics = quality_report(audio, reconstructions, sr=sr)
-
-    # Step 6: Generate comparison plot
-    print("\n--- Step 6: Generating comparison plot ---")
-    plot_data = {
-        "Original": (audio, sr),
-        "Full Recon": (full_recon, sr),
-        "Semantic Only": (semantic_recon, sr),
-        "Acoustic Only": (acoustic_recon, sr),
-    }
-    plot_waveform_and_spectrogram(
-        plot_data,
-        title="Experiment 01: Token Separation Comparison",
-        save_path=RESULTS_DIR / f"01_comparison_{timestamp}.png",
-    )
-
-    # Step 7: Bitrate calculations
-    print("\n--- Step 7: Bitrate Summary ---")
+    probe_tokens = codec.encode(samples[0][0], sr=samples[0][1])
+    info = codec.report_codebook_info(probe_tokens)
     num_codebooks = info["num_codebooks"]
-    bits_per_token = info["bits_per_token"]
-    frame_rate = info["frame_rate_hz"]
+    sweep_points = choose_sweep_points(num_codebooks)
+    print(f"Sweep points: {sweep_points}")
 
-    bitrates = {
-        "Semantic-only (1 cb)": frame_rate * 1 * bits_per_token,
-        "2 codebooks": frame_rate * 2 * bits_per_token,
-        "4 codebooks": frame_rate * 4 * bits_per_token,
-        f"Full ({num_codebooks} cb)": frame_rate * num_codebooks * bits_per_token,
-        "Opus (typical voice)": 24000,  # 24 kbps typical
-        "Raw PCM 24kHz 16bit": 24000 * 16,
-    }
+    # Step 3: Run sweep across all samples
+    print("\n--- Step 3: Running codebook sweep ---")
+    # Accumulate per-n metrics across samples
+    accumulated: dict[int, list[dict]] = {n: [] for n in sweep_points}
 
-    print(f"\n{'Configuration':<25} {'Bitrate':>12} {'vs Raw PCM':>12} {'vs Opus':>12}")
-    print("-" * 65)
-    raw_bps = bitrates["Raw PCM 24kHz 16bit"]
-    opus_bps = bitrates["Opus (typical voice)"]
-    for label, bps in bitrates.items():
-        if bps >= 1000:
-            rate_str = f"{bps/1000:.1f} kbps"
-        else:
-            rate_str = f"{bps:.1f} bps"
-        compression = f"{raw_bps / bps:.0f}x" if bps > 0 else "N/A"
-        vs_opus = f"{opus_bps / bps:.1f}x" if bps > 0 else "N/A"
-        print(f"{label:<25} {rate_str:>12} {compression:>12} {vs_opus:>12}")
+    for audio, sr, label in samples:
+        print(f"\n  Sample: {label}")
+        tokens = codec.encode(audio, sr=sr)
+
+        for n in sweep_points:
+            print(f"    {n} codebook(s)...", end=" ", flush=True)
+            recon = codec.reconstruct_with_n_codebooks(tokens, n)
+
+            metrics: dict[str, float] = {"codebooks": n}
+            try:
+                metrics["pesq"] = compute_pesq(audio, recon, sr)
+            except Exception as e:
+                print(f"PESQ failed: {e}", end=" ")
+                metrics["pesq"] = float("nan")
+
+            try:
+                metrics["stoi"] = compute_stoi(audio, recon, sr)
+            except Exception as e:
+                print(f"STOI failed: {e}", end=" ")
+                metrics["stoi"] = float("nan")
+
+            try:
+                metrics["speaker_similarity"] = compute_speaker_similarity(audio, recon, sr)
+            except Exception:
+                metrics["speaker_similarity"] = float("nan")
+
+            accumulated[n].append(metrics)
+            print(
+                f"PESQ={metrics['pesq']:.3f}  STOI={metrics['stoi']:.3f}  "
+                f"SpkSim={metrics['speaker_similarity']:.3f}"
+                if not np.isnan(metrics["pesq"])
+                else "done"
+            )
+
+        # Save per-sample reconstructions for the first sample only (for listening)
+        if label == samples[0][2]:
+            save_audio(audio, RESULTS_DIR / f"01_original_{timestamp}.wav", sr)
+            for n in sweep_points:
+                recon = codec.reconstruct_with_n_codebooks(tokens, n)
+                save_audio(
+                    recon,
+                    RESULTS_DIR / f"reconstruction_{n}_codebooks.wav",
+                    sr,
+                )
+
+    # Step 4: Average metrics across samples
+    print("\n--- Step 4: Averaging metrics ---")
+    sweep_results: list[dict] = []
+    for n in sweep_points:
+        entries = accumulated[n]
+        avg: dict[str, float] = {"codebooks": n}
+        for key in ("pesq", "stoi", "speaker_similarity"):
+            vals = [e[key] for e in entries if not np.isnan(e.get(key, float("nan")))]
+            avg[key] = float(np.mean(vals)) if vals else float("nan")
+        avg["bitrate_bps"] = codec.get_bitrate(n)
+        avg["vs_opus_savings"] = codec.get_bandwidth_savings_vs_opus(n)
+        sweep_results.append(avg)
+
+    # Step 5: Print summary table
+    print("\n--- Step 5: Summary Table ---")
+    header = (
+        f"{'Codebooks':>10} {'Bitrate':>12} {'vs Opus':>10} "
+        f"{'PESQ':>8} {'STOI':>8} {'SpkSim':>8}"
+    )
+    print(header)
+    print("-" * len(header))
+    for r in sweep_results:
+        bps = r["bitrate_bps"]
+        rate_str = f"{bps:.1f} bps" if bps < 1000 else f"{bps/1000:.1f} kbps"
+        savings_str = f"{r['vs_opus_savings']*100:.1f}%"
+        pesq_str = f"{r['pesq']:.3f}" if not np.isnan(r["pesq"]) else "N/A"
+        stoi_str = f"{r['stoi']:.3f}" if not np.isnan(r["stoi"]) else "N/A"
+        sim_str = (
+            f"{r['speaker_similarity']:.3f}"
+            if not np.isnan(r.get("speaker_similarity", float("nan")))
+            else "N/A"
+        )
+        print(
+            f"{r['codebooks']:>10} {rate_str:>12} {savings_str:>10} "
+            f"{pesq_str:>8} {stoi_str:>8} {sim_str:>8}"
+        )
+
+    # Step 6: Sweet spot detection
+    print("\n--- Step 6: Sweet Spot Detection ---")
+    sweet_spot = optimal_codebook_count(sweep_results, metric="pesq", min_gain=0.1)
+    sweet_bitrate = codec.get_bitrate(sweet_spot)
+    sweet_savings = codec.get_bandwidth_savings_vs_opus(sweet_spot)
+    print(f"Sweet spot: {sweet_spot} codebook(s)")
+    print(f"  Bitrate:  {sweet_bitrate:.1f} bps ({sweet_bitrate/1000:.2f} kbps)")
+    print(f"  vs Opus:  {sweet_savings*100:.1f}% smaller")
+
+    # Step 7: Dual-axis plot
+    print("\n--- Step 7: Generating plot ---")
+    try:
+        import matplotlib.pyplot as plt
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        cbs = [r["codebooks"] for r in sweep_results]
+        pesqs = [r["pesq"] for r in sweep_results]
+        stois = [r["stoi"] for r in sweep_results]
+        bitrates = [r["bitrate_bps"] for r in sweep_results]
+
+        # Left axis: quality metrics
+        color_pesq = "#2196F3"
+        color_stoi = "#4CAF50"
+        ax1.plot(cbs, pesqs, "o-", color=color_pesq, linewidth=2, label="PESQ")
+        ax1.plot(cbs, stois, "s-", color=color_stoi, linewidth=2, label="STOI")
+        ax1.set_xlabel("Number of codebooks", fontsize=12)
+        ax1.set_ylabel("Quality metric", fontsize=12)
+        ax1.set_xticks(cbs)
+        ax1.legend(loc="upper left")
+        ax1.grid(True, alpha=0.3)
+
+        # Right axis: bitrate
+        ax2 = ax1.twinx()
+        color_bps = "#FF9800"
+        ax2.step(cbs, bitrates, where="mid", color=color_bps, linewidth=2,
+                 linestyle="--", alpha=0.7, label="Bitrate")
+        ax2.set_ylabel("Bitrate (bps)", fontsize=12, color=color_bps)
+        ax2.tick_params(axis="y", labelcolor=color_bps)
+
+        # Opus reference range (6,000–32,000 bps)
+        ax2.axhspan(6000, 32000, alpha=0.08, color="red", label="Opus range")
+        ax2.text(
+            cbs[-1], 19000, "Opus range\n(6–32 kbps)",
+            ha="right", va="center", fontsize=9, color="red", alpha=0.6,
+        )
+        ax2.legend(loc="lower right")
+
+        # Sweet spot marker
+        ax1.axvline(x=sweet_spot, color="#E91E63", linestyle=":", linewidth=2, alpha=0.7)
+        ax1.annotate(
+            f"Sweet spot\n({sweet_spot} cb, {sweet_bitrate:.0f} bps)",
+            xy=(sweet_spot, max(pesqs) * 0.95),
+            fontsize=9,
+            color="#E91E63",
+            ha="center",
+        )
+
+        plt.title("Codebook Sweep: Quality vs Bandwidth", fontsize=14)
+        fig.tight_layout()
+        plot_path = RESULTS_DIR / f"01_codebook_sweep_{timestamp}.png"
+        plt.savefig(str(plot_path), dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved plot: {plot_path}")
+    except Exception as e:
+        print(f"Plotting failed: {e}")
 
     # Step 8: Summary
     print("\n" + "=" * 70)
-    print("EXPERIMENT 01 SUMMARY")
+    print("EXPERIMENT 01 SUMMARY — Codebook Sweep")
     print("=" * 70)
-    print(f"\nMimi uses {num_codebooks} codebooks (paper claims 8).")
-    print(f"Semantic-only bitrate: {frame_rate * bits_per_token:.1f} bps")
-    print(f"Full Mimi bitrate: {frame_rate * num_codebooks * bits_per_token:.1f} bps")
-
-    sem_metrics = metrics.get("Semantic-only (cb 0)", {})
-    full_metrics = metrics.get("Full (all codebooks)", {})
-
-    print(f"\nKey metrics:")
-    print(f"  Full reconstruction  — PESQ: {full_metrics.get('pesq', 'N/A')}, "
-          f"STOI: {full_metrics.get('stoi', 'N/A')}")
-    print(f"  Semantic-only        — PESQ: {sem_metrics.get('pesq', 'N/A')}, "
-          f"STOI: {sem_metrics.get('stoi', 'N/A')}")
-
-    stoi_val = sem_metrics.get("stoi", 0)
-    if isinstance(stoi_val, float) and not np.isnan(stoi_val):
-        if stoi_val > 0.5:
-            print(f"\n✓ STOI > 0.5 ({stoi_val:.3f}): Semantic-only reconstruction "
-                  "appears intelligible. Core hypothesis shows promise.")
-        else:
-            print(f"\n✗ STOI ≤ 0.5 ({stoi_val:.3f}): Semantic-only reconstruction "
-                  "may not be intelligible. Consider using more codebooks (Experiment 02).")
-
+    print(f"\nMimi codebooks: {num_codebooks}")
+    print(f"Sweep points tested: {sweep_points}")
+    print(f"Samples averaged: {len(samples)}")
+    print(f"\nSweet spot: {sweet_spot} codebook(s) at {sweet_bitrate:.1f} bps")
+    print(f"  Still {sweet_savings*100:.1f}% smaller than Opus (24 kbps)")
+    print(f"\nEven ALL {num_codebooks} codebooks at "
+          f"{codec.get_bitrate(num_codebooks):.0f} bps is "
+          f"{codec.get_bandwidth_savings_vs_opus(num_codebooks)*100:.1f}% smaller than Opus.")
     print(f"\nOutput files saved to: {RESULTS_DIR}/")
-    print("LISTEN to 01_semantic_only_*.wav — your ears are the ultimate judge.")
+    print("LISTEN to reconstruction_*_codebooks.wav to verify quality gradient.")
     print("=" * 70)
 
-    return metrics
+    return sweep_results
 
 
 if __name__ == "__main__":

@@ -34,9 +34,16 @@ class MimiCodec:
         self.device = device
         print(f"Loading Mimi model ({MODEL_ID}) on {device}...")
 
-        self.model = MimiModel.from_pretrained(MODEL_ID).to(device)
+        try:
+            self.model = MimiModel.from_pretrained(MODEL_ID).to(device)
+        except OSError:
+            print("Network unavailable, loading from cache...")
+            self.model = MimiModel.from_pretrained(MODEL_ID, local_files_only=True).to(device)
         self.model.eval()
-        self.feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_ID)
+        try:
+            self.feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_ID)
+        except OSError:
+            self.feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_ID, local_files_only=True)
 
         self._num_codebooks: Optional[int] = None
         print("Mimi model loaded successfully.")
@@ -123,6 +130,29 @@ class MimiCodec:
         """
         return tokens[:, 1:, :]
 
+    def reconstruct_with_n_codebooks(self, tokens: torch.Tensor, n: int) -> np.ndarray:
+        """Reconstruct audio using only the first n codebooks, zeroing the rest.
+
+        Args:
+            tokens: Full token tensor (batch, num_codebooks, num_frames).
+            n: Number of codebooks to keep (1 = semantic only, all = full quality).
+
+        Returns:
+            Reconstructed audio numpy array.
+
+        Raises:
+            ValueError: If n is out of valid range.
+        """
+        num_codebooks = tokens.shape[1]
+        if not (1 <= n <= num_codebooks):
+            raise ValueError(
+                f"n must be between 1 and {num_codebooks}, got {n}"
+            )
+        modified = tokens.clone()
+        if n < num_codebooks:
+            modified[:, n:, :] = 0
+        return self.decode(modified)
+
     def reconstruct_semantic_only(self, tokens: torch.Tensor) -> np.ndarray:
         """Reconstruct audio using only semantic tokens (codebook 0), zeroing the rest.
 
@@ -132,9 +162,34 @@ class MimiCodec:
         Returns:
             Reconstructed audio numpy array.
         """
-        modified = tokens.clone()
-        modified[:, 1:, :] = 0
-        return self.decode(modified)
+        return self.reconstruct_with_n_codebooks(tokens, 1)
+
+    @staticmethod
+    def get_bitrate(n_codebooks: int) -> float:
+        """Calculate bitrate for a given number of codebooks.
+
+        Args:
+            n_codebooks: Number of codebooks transmitted.
+
+        Returns:
+            Bitrate in bits per second.
+        """
+        return 12.5 * n_codebooks * 11
+
+    @staticmethod
+    def get_bandwidth_savings_vs_opus(
+        n_codebooks: int, opus_bitrate: int = 24000
+    ) -> float:
+        """Calculate bandwidth savings compared to Opus.
+
+        Args:
+            n_codebooks: Number of Mimi codebooks transmitted.
+            opus_bitrate: Opus bitrate in bps (default 24 kbps).
+
+        Returns:
+            Savings as a fraction (e.g. 0.96 means 96% smaller than Opus).
+        """
+        return 1.0 - (MimiCodec.get_bitrate(n_codebooks) / opus_bitrate)
 
     def reconstruct_acoustic_only(self, tokens: torch.Tensor) -> np.ndarray:
         """Reconstruct audio using only acoustic tokens, zeroing codebook 0.

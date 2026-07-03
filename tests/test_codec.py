@@ -90,6 +90,151 @@ class TestTokenManipulation:
         assert info["semantic_only_bitrate_bps"] == 137.5
 
 
+class TestReconstructWithNCodebooks:
+    """Test the configurable codebook reconstruction method."""
+
+    def _make_tokens(self, num_codebooks: int = 8, num_frames: int = 100) -> torch.Tensor:
+        return torch.randint(0, 2048, (1, num_codebooks, num_frames))
+
+    def _make_codec_stub(self):
+        """Create a MimiCodec stub that records decode calls instead of running the model."""
+        codec = object.__new__(MimiCodec)
+        codec.device = "cpu"
+        codec._last_decode_input = None
+
+        def fake_decode(tokens):
+            codec._last_decode_input = tokens.clone()
+            return np.zeros(1000, dtype=np.float32)
+
+        codec.decode = fake_decode
+        return codec
+
+    def test_zeros_correct_codebooks(self):
+        codec = self._make_codec_stub()
+        tokens = self._make_tokens(8, 50)
+        codec.reconstruct_with_n_codebooks(tokens, 3)
+
+        decoded = codec._last_decode_input
+        # Codebooks 0-2 should be preserved
+        assert torch.equal(decoded[:, :3, :], tokens[:, :3, :])
+        # Codebooks 3-7 should be zeroed
+        assert (decoded[:, 3:, :] == 0).all()
+
+    def test_all_codebooks_no_zeroing(self):
+        codec = self._make_codec_stub()
+        tokens = self._make_tokens(8, 50)
+        codec.reconstruct_with_n_codebooks(tokens, 8)
+
+        decoded = codec._last_decode_input
+        assert torch.equal(decoded, tokens)
+
+    def test_single_codebook(self):
+        codec = self._make_codec_stub()
+        tokens = self._make_tokens(8, 50)
+        codec.reconstruct_with_n_codebooks(tokens, 1)
+
+        decoded = codec._last_decode_input
+        assert torch.equal(decoded[:, 0:1, :], tokens[:, 0:1, :])
+        assert (decoded[:, 1:, :] == 0).all()
+
+    def test_invalid_n_raises(self):
+        codec = self._make_codec_stub()
+        tokens = self._make_tokens(8, 50)
+
+        with pytest.raises(ValueError):
+            codec.reconstruct_with_n_codebooks(tokens, 0)
+        with pytest.raises(ValueError):
+            codec.reconstruct_with_n_codebooks(tokens, 9)
+
+    def test_does_not_mutate_original(self):
+        codec = self._make_codec_stub()
+        tokens = self._make_tokens(8, 50)
+        original = tokens.clone()
+        codec.reconstruct_with_n_codebooks(tokens, 3)
+
+        assert torch.equal(tokens, original)
+
+
+class TestBitrateCalculations:
+    """Test get_bitrate and get_bandwidth_savings_vs_opus."""
+
+    def test_get_bitrate_1(self):
+        assert MimiCodec.get_bitrate(1) == pytest.approx(137.5)
+
+    def test_get_bitrate_8(self):
+        assert MimiCodec.get_bitrate(8) == pytest.approx(1100.0)
+
+    def test_get_bitrate_32(self):
+        assert MimiCodec.get_bitrate(32) == pytest.approx(4400.0)
+
+    def test_savings_vs_opus_1_codebook(self):
+        savings = MimiCodec.get_bandwidth_savings_vs_opus(1)
+        assert savings == pytest.approx(1.0 - 137.5 / 24000)
+
+    def test_savings_vs_opus_8_codebooks(self):
+        savings = MimiCodec.get_bandwidth_savings_vs_opus(8)
+        assert savings == pytest.approx(1.0 - 1100 / 24000)
+
+    def test_savings_vs_opus_custom_bitrate(self):
+        savings = MimiCodec.get_bandwidth_savings_vs_opus(1, opus_bitrate=10000)
+        assert savings == pytest.approx(1.0 - 137.5 / 10000)
+
+
+class TestOptimalCodebookCount:
+    """Test the diminishing returns sweet-spot detection."""
+
+    def test_clear_knee(self):
+        from src.quality import optimal_codebook_count
+
+        # Quality jumps sharply at 1-3, then plateaus
+        results = [
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
+            {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
+            {"codebooks": 3, "pesq": 2.8, "stoi": 0.75},
+            {"codebooks": 4, "pesq": 2.85, "stoi": 0.77},  # gain < 0.1
+            {"codebooks": 5, "pesq": 2.87, "stoi": 0.78},
+        ]
+        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 3
+
+    def test_never_drops_below(self):
+        from src.quality import optimal_codebook_count
+
+        # Every step has large gain
+        results = [
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
+            {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
+            {"codebooks": 3, "pesq": 3.0, "stoi": 0.8},
+        ]
+        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 3
+
+    def test_single_entry(self):
+        from src.quality import optimal_codebook_count
+
+        results = [{"codebooks": 4, "pesq": 2.5, "stoi": 0.7}]
+        assert optimal_codebook_count(results, metric="pesq") == 4
+
+    def test_stoi_metric(self):
+        from src.quality import optimal_codebook_count
+
+        results = [
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.3},
+            {"codebooks": 2, "pesq": 1.5, "stoi": 0.6},
+            {"codebooks": 3, "pesq": 2.0, "stoi": 0.65},  # stoi gain < 0.1
+        ]
+        assert optimal_codebook_count(results, metric="stoi", min_gain=0.1) == 2
+
+    def test_unsorted_input(self):
+        from src.quality import optimal_codebook_count
+
+        # Input not sorted by codebook count — function should handle it
+        results = [
+            {"codebooks": 3, "pesq": 2.05, "stoi": 0.77},  # gain 0.05 < 0.1
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
+            {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
+        ]
+        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 2
+
+
 class TestUtilityFunctions:
     """Test utility functions that don't need network access."""
 

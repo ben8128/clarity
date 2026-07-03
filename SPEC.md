@@ -2,78 +2,65 @@
 
 ## Hypothesis
 
-Transmitting only Mimi's semantic tokens (codebook 0) at ~137.5 bps and reconstructing
-audio with a personalized acoustic decoder on the receiver's device can produce
-intelligible, recognizable voice calls — a 99%+ bandwidth reduction versus standard
-audio codecs like Opus.
+Transmitting a tunable subset of Mimi's codebooks (1 to N) provides a continuous
+quality/bandwidth tradeoff. Even at ALL codebooks, Mimi is 96%+ smaller than Opus.
+The goal is to find the **knee of the curve** — the sweet spot where adding another
+codebook stops meaningfully improving quality — enabling crystal-clear calls on the
+worst networks.
 
 ## Experiments
 
-### Experiment 01: Token Separation Validation
+### Experiment 01: Codebook Sweep
 
-**Goal:** Validate that Mimi's codebook 0 (semantic tokens) alone produces intelligible speech.
-
-**Method:**
-1. Load test audio (LibriSpeech sample or local recording)
-2. Encode with Mimi to get full token tensor
-3. Produce four reconstructions:
-   - (a) Full reconstruction (all codebooks) — baseline
-   - (b) Semantic-only (codebook 0, rest zeroed) — core hypothesis test
-   - (c) Acoustic-only (codebook 0 zeroed, rest kept) — what we discard
-   - (d) First-half semantic + second-half acoustic — boundary analysis
-4. Measure PESQ, STOI for each vs. original
-5. Calculate bitrate for each configuration
-
-**Success criteria:** Semantic-only reconstruction is intelligible (STOI > 0.5, words
-recognizable by human listener).
-
-**Output:** `results/01_*.wav`, comparison plot, metrics table.
-
----
-
-### Experiment 02: Semantic-Only Reconstruction Quality Sweep
-
-**Goal:** Map the quality/bandwidth tradeoff by varying the number of codebooks transmitted.
+**Goal:** Find the quality/bandwidth knee by sweeping codebook count from 1 to N.
 
 **Method:**
-1. Reconstruct using codebooks 0 only, 0-1, 0-2, ..., up to all codebooks
-2. Measure PESQ and STOI at each level
-3. Plot quality vs. bitrate curve
+1. Load 3+ audio samples (local `audio/` dir, fallback to LibriSpeech)
+2. Encode each with Mimi, sweep codebook counts 1 through N
+3. For each count: reconstruct, measure PESQ, STOI, and speaker similarity
+4. Average metrics across samples
+5. Detect sweet spot via diminishing-returns analysis (`optimal_codebook_count()`)
+6. Generate dual-axis plot (quality metrics vs bitrate with Opus reference shading)
 
-**Success criteria:** Identify the "knee" — minimum codebooks for acceptable quality.
+**Success criteria:** Identify the knee — codebook count where marginal quality gain
+drops below threshold. All codebook counts remain 90%+ smaller than Opus.
 
-**Output:** Quality vs. bitrate curve, audio samples at each level.
+**Output:** `results/01_codebook_sweep_*.png`, `results/reconstruction_*_codebooks.wav`,
+summary table with bitrate, PESQ, STOI, speaker similarity per codebook count.
 
 ---
 
 ### Experiment 03: Prosody & Emotion Analysis
 
-**Goal:** Determine whether semantic tokens preserve prosody (pitch, rhythm, emphasis).
+**Goal:** Find the codebook count at which prosody (pitch, rhythm, emphasis) is preserved.
 
 **Method:**
 1. Process emotionally varied speech (questions, exclamations, whispers, fast speech)
-2. Compare pitch contours (F0) between original and semantic-only reconstruction
-3. Measure pitch correlation
+2. Sweep codebook counts (1, 2, 4, 8, all) for each sample
+3. Compare pitch contours (F0) between original and each reconstruction
+4. Measure pitch correlation at each codebook count to find where prosody emerges
 
-**Success criteria:** Pitch correlation > 0.7 between original and semantic-only.
+**Success criteria:** Identify the codebook count where pitch correlation exceeds 0.7.
 
-**Output:** Pitch contour plots, correlation metrics.
+**Output:** Pitch contour plots per codebook count, correlation vs codebook count curve.
 
 ---
 
-### Experiment 04: Speaker Embedding / Voice Cross-Combination
+### Experiment 04: Speaker Embedding / Voice Identity vs Codebook Count
 
-**Goal:** Test whether acoustic tokens carry speaker identity independently of content.
+**Goal:** Identify at which codebook count speaker identity becomes recognizable.
 
 **Method:**
 1. Encode Speaker A and Speaker B audio
-2. Cross-combine: Speaker A semantic + Speaker B acoustic → decode
-3. Measure speaker similarity scores for all combinations
+2. Sweep codebook counts for each speaker, measure speaker similarity vs original
+3. Cross-combine at the sweet-spot codebook count: Speaker A semantic + Speaker B acoustic
+4. Measure speaker similarity scores for all combinations
 
-**Success criteria:** Cross-combined audio matches Speaker B's voice identity
-(similarity > 0.7 with Speaker B, < 0.5 with Speaker A).
+**Success criteria:** Find the codebook count where speaker similarity exceeds 0.7.
+Cross-combined audio at that count matches Speaker B's identity.
 
-**Output:** Speaker similarity matrix, cross-combined audio samples.
+**Output:** Speaker similarity vs codebook count curve, cross-combined audio samples,
+similarity matrix at sweet-spot codebook count.
 
 ---
 
@@ -111,14 +98,14 @@ recognizable by human listener).
 ## Execution Order
 
 1. **Phase 0:** Project setup, dependency installation, basic codec test
-2. **Phase 1:** Experiment 01 (token separation) — CRITICAL PATH
-3. **Phase 2:** Experiment 03 (prosody) — understanding what semantic tokens preserve
-4. **Phase 3:** Experiment 04 (speaker embedding) — validating personalization
+2. **Phase 1:** Experiment 01 (codebook sweep) — CRITICAL PATH, finds the knee
+3. **Phase 2:** Experiment 03 (prosody) — find codebook count where prosody is preserved
+4. **Phase 3:** Experiment 04 (speaker identity) — find codebook count for voice recognition
 5. **Phase 4:** Experiments 05-06 (bandwidth/latency) — practical feasibility
 
 ## Decision Points
 
-- After Exp 01: If semantic-only is unintelligible → try codebooks 0-1, 0-2 (Exp 02)
-- After Exp 03: If prosody is lost → design prosody sideband (pitch + energy contour)
-- After Exp 04: If cross-combination fails → acoustic tokens may not cleanly separate identity
+- After Exp 01: Sweet spot identified → use that codebook count for all subsequent experiments
+- After Exp 03: If prosody requires more codebooks than sweet spot → adjust target upward
+- After Exp 04: If speaker identity requires more codebooks → adjust target upward
 - After Exp 05: If latency > 300ms → optimize with ONNX or smaller model variants

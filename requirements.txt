@@ -9,4 +9,5 @@ numpy
 scipy
 pesq
 pystoi
+sounddevice  # optional: for listening_test.py audio playback
 pytest

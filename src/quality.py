@@ -114,6 +114,38 @@ def compute_speaker_similarity(
     return float(similarity)
 
 
+def optimal_codebook_count(
+    sweep_results: list[dict],
+    metric: str = "pesq",
+    min_gain: float = 0.1,
+) -> int:
+    """Find the codebook count where adding more stops meaningfully improving quality.
+
+    Args:
+        sweep_results: List of dicts with keys 'codebooks', 'pesq', 'stoi',
+            and optionally 'speaker_similarity'.
+        metric: Which metric to analyze ('pesq', 'stoi', or 'speaker_similarity').
+        min_gain: Minimum marginal gain to justify adding another codebook.
+
+    Returns:
+        The optimal number of codebooks (sweet spot).
+    """
+    sorted_results = sorted(sweep_results, key=lambda r: r["codebooks"])
+    sorted_results = [r for r in sorted_results if not np.isnan(r.get(metric, float("nan")))]
+
+    if len(sorted_results) <= 1:
+        return sorted_results[0]["codebooks"] if sorted_results else 1
+
+    for i in range(1, len(sorted_results)):
+        prev_val = sorted_results[i - 1][metric]
+        curr_val = sorted_results[i][metric]
+        gain = curr_val - prev_val
+        if gain < min_gain:
+            return sorted_results[i - 1]["codebooks"]
+
+    return sorted_results[-1]["codebooks"]
+
+
 def quality_report(
     original: np.ndarray,
     reconstructions: dict[str, np.ndarray],
