@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
 from src.quality import compute_pesq, compute_stoi
+from src.results_io import save_metrics
 from src.utils import (
     audio_stats,
     download_librispeech_sample,
@@ -90,9 +91,7 @@ def run_quality_sweep(codec: MimiCodec, tokens, original: np.ndarray, sr: int, l
         if n_cb > tokens.shape[1]:
             continue
 
-        modified = tokens.clone()
-        modified[:, n_cb:, :] = 0
-        recon = codec.decode(modified)
+        recon = codec.reconstruct_with_n_codebooks(tokens, n_cb)
 
         # Align lengths for comparison
         min_len = min(len(original), len(recon))
@@ -191,10 +190,12 @@ def run_experiment():
     mimi_stoi = compute_stoi(clean_audio[:min_len], mimi_full[:min_len], sr)
     print(f"{'Mimi (32 cb)':<25} {'4.4 kbps':>10} {mimi_pesq:>8.3f} {mimi_stoi:>8.3f}")
 
+    opus_metrics = {}
     for kbps, opus_audio in opus_results.items():
         min_len = min(len(clean_audio), len(opus_audio))
         pesq_s = compute_pesq(clean_audio[:min_len], opus_audio[:min_len], sr)
         stoi_s = compute_stoi(clean_audio[:min_len], opus_audio[:min_len], sr)
+        opus_metrics[str(kbps)] = {"pesq": pesq_s, "stoi": stoi_s}
         print(f"{'Opus ' + str(kbps) + 'k':<25} {str(kbps) + ' kbps':>10} {pesq_s:>8.3f} {stoi_s:>8.3f}")
 
     # === TEST 2: Quality sweep on clean audio ===
@@ -205,6 +206,7 @@ def run_experiment():
     sweep_clean = run_quality_sweep(codec, tokens_clean, clean_audio, sr, "clean", timestamp)
 
     # === TEST 3: Noisy audio through Mimi ===
+    sweep_noisy = None
     if "airplane" in audio_files:
         noisy_audio = audio_files["airplane"]
 
@@ -244,6 +246,18 @@ def run_experiment():
             title="Airplane Audio: Original vs Mimi Reconstruction",
             save_path=RESULTS_DIR / f"01b_airplane_comparison_{timestamp}.png",
         )
+
+    save_metrics(
+        "01b_mimi_vs_opus",
+        {
+            "mimi_full_clean": {"pesq": mimi_pesq, "stoi": mimi_stoi, "bitrate_bps": 4400},
+            "opus_clean": opus_metrics,
+            "sweep_clean": {str(k): v for k, v in sweep_clean.items()},
+            "sweep_airplane": (
+                {str(k): v for k, v in sweep_noisy.items()} if sweep_noisy else None
+            ),
+        },
+    )
 
     # === Summary ===
     print("\n" + "=" * 70)

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
 from src.quality import compute_pesq, compute_stoi
+from src.results_io import save_metrics
 from src.utils import (
     download_librispeech_sample,
     load_audio,
@@ -169,6 +170,8 @@ def run_experiment():
     print(f"{'Type':<10} {'(dB)':>5} │ {'PESQ / STOI':>14} {'PESQ / STOI':>14} │ {'ΔSTOI':>12}")
     print("─" * 72)
 
+    denoising_results: list[dict] = []
+
     for noise_name, noise in noise_types.items():
         for snr_db in snr_levels:
             # Mix clean + noise
@@ -198,6 +201,15 @@ def run_experiment():
 
             delta_stoi = mimi_stoi - noisy_stoi
             indicator = "✓ YES" if delta_stoi > 0.01 else ("~ same" if abs(delta_stoi) <= 0.01 else "✗ worse")
+            denoising_results.append({
+                "noise": noise_name,
+                "snr_db": snr_db,
+                "noisy_pesq": noisy_pesq,
+                "noisy_stoi": noisy_stoi,
+                "mimi_pesq": mimi_pesq,
+                "mimi_stoi": mimi_stoi,
+                "delta_stoi": delta_stoi,
+            })
 
             np_str = f"{noisy_pesq:.2f}" if not np.isnan(noisy_pesq) else "N/A"
             mp_str = f"{mimi_pesq:.2f}" if not np.isnan(mimi_pesq) else "N/A"
@@ -215,6 +227,7 @@ def run_experiment():
     # ====================================================================
     # TEST 2: Airplane recording — spectral analysis
     # ====================================================================
+    airplane_metrics = None
     airplane_path = AUDIO_DIR / "airplane_handheld.wav"
     if airplane_path.exists():
         print("\n" + "=" * 70)
@@ -251,14 +264,30 @@ def run_experiment():
 
         # Also generate a spectrogram at different codebook levels
         print("\n--- Codebook sweep on airplane audio ---")
+        airplane_sweep = []
         for n_cb in [4, 8, 16, 32]:
-            modified = tokens.clone()
-            modified[:, n_cb:, :] = 0
-            recon = codec.decode(modified)
+            recon = codec.reconstruct_with_n_codebooks(tokens, n_cb)
             spec = compute_spectral_noise_floor(recon, sr)
             save_audio(recon, RESULTS_DIR / f"01c_airplane_cb{n_cb:02d}_{timestamp}.wav", sr)
             print(f"  {n_cb} codebooks: spectral SNR = {spec['spectral_snr_db']:.1f} dB "
                   f"(noise floor: {spec['noise_floor_energy']:.4f})")
+            airplane_sweep.append({"codebooks": n_cb, **spec})
+
+        airplane_metrics = {
+            "original": orig_spec,
+            "mimi_full": mimi_spec,
+            "spectral_snr_change_db": mimi_spec["spectral_snr_db"] - orig_spec["spectral_snr_db"],
+            "codebook_sweep": airplane_sweep,
+        }
+
+    save_metrics(
+        "01c_noise_isolation",
+        {
+            "snr_levels_db": snr_levels,
+            "synthetic_denoising": denoising_results,
+            "airplane": airplane_metrics,
+        },
+    )
 
     # ====================================================================
     # Summary

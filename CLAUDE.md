@@ -135,6 +135,8 @@ savings = MimiCodec.get_bandwidth_savings_vs_opus(4)  # 0.977 (97.7%)
 - Print progress for any operation that takes >5 seconds
 - Save all experiment results (metrics + audio) to results/ with descriptive filenames
 - Include timestamps in result filenames to avoid overwriting
+- Metrics MUST be persisted via `src.results_io.save_metrics()` — never stdout-only.
+  (The 2026-02-18 runs of 01b/01c printed metrics without saving them; those numbers are lost.)
 
 ## Git Workflow
 

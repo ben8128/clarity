@@ -22,6 +22,7 @@ from src.quality import (
     compute_speaker_similarity,
     optimal_codebook_count,
 )
+from src.results_io import save_metrics
 from src.utils import (
     download_librispeech_sample,
     load_audio,
@@ -205,6 +206,24 @@ def run_experiment():
     print(f"Sweet spot: {sweet_spot} codebook(s)")
     print(f"  Bitrate:  {sweet_bitrate:.1f} bps ({sweet_bitrate/1000:.2f} kbps)")
     print(f"  vs Opus:  {sweet_savings*100:.1f}% smaller")
+
+    save_metrics(
+        "01_codebook_sweep",
+        {
+            "samples": [s[2] for s in samples],
+            "num_codebooks": num_codebooks,
+            "sweep_points": sweep_points,
+            "per_sample": {
+                str(n): entries for n, entries in accumulated.items()
+            },
+            "averaged": sweep_results,
+            "sweet_spot": {
+                "codebooks": sweet_spot,
+                "bitrate_bps": sweet_bitrate,
+                "vs_opus_savings": sweet_savings,
+            },
+        },
+    )
 
     # Step 7: Dual-axis plot
     print("\n--- Step 7: Generating plot ---")

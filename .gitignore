@@ -1,8 +1,9 @@
 # Audio files
 audio/
 
-# Result audio files
+# Result audio files (metrics JSON and plots stay tracked)
 results/*.wav
+results/vectors/*.wav
 
 # Python
 __pycache__/
