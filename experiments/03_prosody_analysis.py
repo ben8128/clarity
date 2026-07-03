@@ -14,6 +14,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
+from src.quality import extract_pitch, pitch_correlation
 from src.results_io import save_metrics
 from src.utils import download_librispeech_sample, load_audio, save_audio
 
@@ -23,35 +24,6 @@ AUDIO_DIR = Path(__file__).resolve().parent.parent / "audio"
 SWEEP_POINTS = [1, 2, 4, 8, 16, 32]
 CORRELATION_THRESHOLD = 0.7
 
-
-def extract_pitch(audio: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
-    """Extract pitch contour (F0) using librosa's pyin.
-
-    Returns:
-        Tuple of (times, f0_values). f0_values may contain NaN for unvoiced frames.
-    """
-    import librosa
-
-    f0, voiced_flag, voiced_probs = librosa.pyin(
-        audio, fmin=50, fmax=500, sr=sr
-    )
-    times = librosa.times_like(f0, sr=sr)
-    return times, f0
-
-
-def pitch_correlation(f0_a: np.ndarray, f0_b: np.ndarray) -> float:
-    """Compute correlation between two pitch contours, ignoring NaN frames."""
-    # Align lengths
-    min_len = min(len(f0_a), len(f0_b))
-    a = f0_a[:min_len]
-    b = f0_b[:min_len]
-
-    # Only compare frames where both are voiced
-    mask = ~(np.isnan(a) | np.isnan(b))
-    if mask.sum() < 10:
-        return float("nan")
-
-    return float(np.corrcoef(a[mask], b[mask])[0, 1])
 
 
 def collect_test_samples() -> dict:

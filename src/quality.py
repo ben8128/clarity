@@ -128,6 +128,109 @@ def compute_speaker_similarity(
     return float(similarity)
 
 
+def extract_pitch(audio: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
+    """Extract pitch contour (F0) using librosa's pyin.
+
+    Returns:
+        Tuple of (times, f0_values). f0_values may contain NaN for unvoiced frames.
+    """
+    import librosa
+
+    f0, voiced_flag, voiced_probs = librosa.pyin(audio, fmin=50, fmax=500, sr=sr)
+    times = librosa.times_like(f0, sr=sr)
+    return times, f0
+
+
+def pitch_correlation(f0_a: np.ndarray, f0_b: np.ndarray) -> float:
+    """Compute correlation between two pitch contours, ignoring NaN frames."""
+    min_len = min(len(f0_a), len(f0_b))
+    a = f0_a[:min_len]
+    b = f0_b[:min_len]
+
+    # Only compare frames where both are voiced
+    mask = ~(np.isnan(a) | np.isnan(b))
+    if mask.sum() < 10:
+        return float("nan")
+
+    return float(np.corrcoef(a[mask], b[mask])[0, 1])
+
+
+def compute_dnsmos(audio: np.ndarray, sr: int = 24000) -> float:
+    """Compute DNSMOS overall quality (no-reference MOS, 1-5).
+
+    No-reference is essential for reconstruction work: the goal is output
+    BETTER than the source recording, which reference metrics can't express.
+
+    Args:
+        audio: Audio array.
+        sr: Sample rate.
+
+    Returns:
+        DNSMOS OVRL score (higher is better; ~3.2+ is clean, ~3.7+ studio-like).
+    """
+    from speechmos import dnsmos
+
+    audio16 = resample(audio, sr, 16000)
+    result = dnsmos.run(np.clip(audio16, -1.0, 1.0), sr=16000)
+    return float(result["ovrl_mos"])
+
+
+_whisper_model = None
+
+
+def compute_wer(audio: np.ndarray, reference_text: str, sr: int = 24000) -> float:
+    """Compute word error rate of transcribed audio vs a reference transcript.
+
+    Measures content fidelity: did the reconstruction preserve the words?
+
+    Args:
+        audio: Audio array to transcribe (faster-whisper small, cached).
+        reference_text: Ground-truth transcript.
+        sr: Sample rate.
+
+    Returns:
+        WER in [0, inf) — 0.0 is perfect.
+    """
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+
+        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+
+    import soundfile as sf
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
+        sf.write(tmp.name, audio, sr)
+        segments, _ = _whisper_model.transcribe(tmp.name, language="en")
+        hypothesis = " ".join(s.text.strip() for s in segments).strip()
+
+    return _word_error_rate(reference_text, hypothesis)
+
+
+def _normalize_words(text: str) -> list[str]:
+    import re
+
+    return re.sub(r"[^a-z0-9' ]+", " ", text.lower()).split()
+
+
+def _word_error_rate(reference: str, hypothesis: str) -> float:
+    """Levenshtein WER between two transcripts."""
+    ref = _normalize_words(reference)
+    hyp = _normalize_words(hypothesis)
+    if not ref:
+        return 0.0 if not hyp else 1.0
+
+    d = np.zeros((len(ref) + 1, len(hyp) + 1), dtype=np.int32)
+    d[:, 0] = np.arange(len(ref) + 1)
+    d[0, :] = np.arange(len(hyp) + 1)
+    for i in range(1, len(ref) + 1):
+        for j in range(1, len(hyp) + 1):
+            cost = 0 if ref[i - 1] == hyp[j - 1] else 1
+            d[i, j] = min(d[i - 1, j] + 1, d[i, j - 1] + 1, d[i - 1, j - 1] + cost)
+    return float(d[len(ref), len(hyp)] / len(ref))
+
+
 def optimal_codebook_count(
     sweep_results: list[dict],
     metric: str = "pesq",

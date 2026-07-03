@@ -24,13 +24,16 @@ def load_audio(path: Union[str, Path], target_sr: int = 24000) -> tuple[np.ndarr
     return audio.astype(np.float32), sr
 
 
-def save_audio(audio: np.ndarray, path: Union[str, Path], sr: int = 24000) -> Path:
+def save_audio(
+    audio: np.ndarray, path: Union[str, Path], sr: int = 24000, verbose: bool = True
+) -> Path:
     """Save audio array to a .wav file.
 
     Args:
         audio: Audio array (float32, mono)
         path: Output file path
         sr: Sample rate
+        verbose: Print the saved path (disable for bulk writes)
 
     Returns:
         Path to saved file.
@@ -38,7 +41,8 @@ def save_audio(audio: np.ndarray, path: Union[str, Path], sr: int = 24000) -> Pa
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(str(path), audio, sr)
-    print(f"Saved audio: {path} ({len(audio) / sr:.2f}s, {sr}Hz)")
+    if verbose:
+        print(f"Saved audio: {path} ({len(audio) / sr:.2f}s, {sr}Hz)")
     return path
 
 
