@@ -1,0 +1,205 @@
+{
+  "experiment_id": "01c_noise_isolation",
+  "timestamp": "2026-07-02T17:20:18.099546",
+  "git_sha": "d17b5d9fa5d9a5b774f336fde4a9af2c79c2c850",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.10.0",
+    "transformers": "5.2.0",
+    "numpy": "2.3.5",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "snr_levels_db": [
+      20,
+      10,
+      5,
+      0,
+      -5
+    ],
+    "synthetic_denoising": [
+      {
+        "noise": "white",
+        "snr_db": 20,
+        "noisy_pesq": 1.7554621696472168,
+        "noisy_stoi": 0.9871297417809881,
+        "mimi_pesq": 1.9416518211364746,
+        "mimi_stoi": 0.9478475642734349,
+        "delta_stoi": -0.03928217750755325
+      },
+      {
+        "noise": "white",
+        "snr_db": 10,
+        "noisy_pesq": 1.128737449645996,
+        "noisy_stoi": 0.9262118632221147,
+        "mimi_pesq": 1.1903492212295532,
+        "mimi_stoi": 0.8857415693667667,
+        "delta_stoi": -0.04047029385534795
+      },
+      {
+        "noise": "white",
+        "snr_db": 5,
+        "noisy_pesq": 1.0615663528442383,
+        "noisy_stoi": 0.8616930795360914,
+        "mimi_pesq": 1.081592082977295,
+        "mimi_stoi": 0.8313376266259082,
+        "delta_stoi": -0.030355452910183267
+      },
+      {
+        "noise": "white",
+        "snr_db": 0,
+        "noisy_pesq": 1.0388184785842896,
+        "noisy_stoi": 0.7868684933895228,
+        "mimi_pesq": 1.0424219369888306,
+        "mimi_stoi": 0.7636961454714949,
+        "delta_stoi": -0.023172347918027913
+      },
+      {
+        "noise": "white",
+        "snr_db": -5,
+        "noisy_pesq": 1.031878113746643,
+        "noisy_stoi": 0.7035312836772949,
+        "mimi_pesq": 1.0322545766830444,
+        "mimi_stoi": 0.6905047950584693,
+        "delta_stoi": -0.013026488618825605
+      },
+      {
+        "noise": "pink",
+        "snr_db": 20,
+        "noisy_pesq": 2.121892213821411,
+        "noisy_stoi": 0.990480351138159,
+        "mimi_pesq": 2.2125253677368164,
+        "mimi_stoi": 0.9524162240074694,
+        "delta_stoi": -0.03806412713068963
+      },
+      {
+        "noise": "pink",
+        "snr_db": 10,
+        "noisy_pesq": 1.2311022281646729,
+        "noisy_stoi": 0.9308185826012786,
+        "mimi_pesq": 1.3161027431488037,
+        "mimi_stoi": 0.8946233282298808,
+        "delta_stoi": -0.03619525437139781
+      },
+      {
+        "noise": "pink",
+        "snr_db": 5,
+        "noisy_pesq": 1.0832669734954834,
+        "noisy_stoi": 0.8539253732606558,
+        "mimi_pesq": 1.1088932752609253,
+        "mimi_stoi": 0.8215046502361869,
+        "delta_stoi": -0.032420723024468856
+      },
+      {
+        "noise": "pink",
+        "snr_db": 0,
+        "noisy_pesq": 1.0441969633102417,
+        "noisy_stoi": 0.7449734590808945,
+        "mimi_pesq": 1.0523884296417236,
+        "mimi_stoi": 0.7218116602555418,
+        "delta_stoi": -0.023161798825352742
+      },
+      {
+        "noise": "pink",
+        "snr_db": -5,
+        "noisy_pesq": 1.0321723222732544,
+        "noisy_stoi": 0.6252316839029657,
+        "mimi_pesq": 1.0337613821029663,
+        "mimi_stoi": 0.6105842742731247,
+        "delta_stoi": -0.014647409629841013
+      },
+      {
+        "noise": "babble",
+        "snr_db": 20,
+        "noisy_pesq": 1.7504162788391113,
+        "noisy_stoi": 0.9850426552681789,
+        "mimi_pesq": 1.8852145671844482,
+        "mimi_stoi": 0.9427816751311802,
+        "delta_stoi": -0.04226098013699875
+      },
+      {
+        "noise": "babble",
+        "snr_db": 10,
+        "noisy_pesq": 1.1283634901046753,
+        "noisy_stoi": 0.9071643399117545,
+        "mimi_pesq": 1.2133458852767944,
+        "mimi_stoi": 0.8730043850628959,
+        "delta_stoi": -0.03415995484885859
+      },
+      {
+        "noise": "babble",
+        "snr_db": 5,
+        "noisy_pesq": 1.0629849433898926,
+        "noisy_stoi": 0.8372212580722882,
+        "mimi_pesq": 1.0826563835144043,
+        "mimi_stoi": 0.8117066815190777,
+        "delta_stoi": -0.025514576553210544
+      },
+      {
+        "noise": "babble",
+        "snr_db": 0,
+        "noisy_pesq": 1.0397813320159912,
+        "noisy_stoi": 0.7634577537862179,
+        "mimi_pesq": 1.0449968576431274,
+        "mimi_stoi": 0.7476642037799155,
+        "delta_stoi": -0.015793550006302448
+      },
+      {
+        "noise": "babble",
+        "snr_db": -5,
+        "noisy_pesq": 1.0327653884887695,
+        "noisy_stoi": 0.6825462018617581,
+        "mimi_pesq": 1.0338207483291626,
+        "mimi_stoi": 0.6707079427163563,
+        "delta_stoi": -0.01183825914540182
+      }
+    ],
+    "airplane": {
+      "original": {
+        "total_energy": 0.002226033480837941,
+        "speech_band_energy": 0.00030298950150609016,
+        "noise_floor_energy": 0.0019230438629165292,
+        "spectral_snr_db": -8.025616645812988
+      },
+      "mimi_full": {
+        "total_energy": 0.002140683587640524,
+        "speech_band_energy": 0.00023012638848740608,
+        "noise_floor_energy": 0.0019105571554973722,
+        "spectral_snr_db": -9.191936492919922
+      },
+      "spectral_snr_change_db": -1.1663198471069336,
+      "codebook_sweep": [
+        {
+          "codebooks": 4,
+          "total_energy": 0.0016178212827071548,
+          "speech_band_energy": 0.00012135450378991663,
+          "noise_floor_energy": 0.0014964668080210686,
+          "spectral_snr_db": -10.910111427307129
+        },
+        {
+          "codebooks": 8,
+          "total_energy": 0.0018619472393766046,
+          "speech_band_energy": 0.0001627596648177132,
+          "noise_floor_energy": 0.0016991875600069761,
+          "spectral_snr_db": -10.186944961547852
+        },
+        {
+          "codebooks": 16,
+          "total_energy": 0.0020158025436103344,
+          "speech_band_energy": 0.00019232602789998055,
+          "noise_floor_energy": 0.001823476399295032,
+          "spectral_snr_db": -9.768621444702148
+        },
+        {
+          "codebooks": 32,
+          "total_energy": 0.002140683587640524,
+          "speech_band_energy": 0.00023012638848740608,
+          "noise_floor_energy": 0.0019105571554973722,
+          "spectral_snr_db": -9.191936492919922
+        }
+      ]
+    }
+  }
+}
