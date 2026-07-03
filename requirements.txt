@@ -11,3 +11,4 @@ pesq
 pystoi
 sounddevice  # optional: for listening_test.py audio playback
 pytest
+speechbrain  # speaker similarity (ECAPA-TDNN embeddings)

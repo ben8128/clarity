@@ -68,6 +68,29 @@ def compute_stoi(
     return float(stoi(ref, deg, target_sr, extended=False))
 
 
+_speaker_classifier = None
+
+
+def _get_speaker_classifier():
+    """Load and cache the ECAPA-TDNN speaker verification model (slow to load)."""
+    global _speaker_classifier
+    if _speaker_classifier is None:
+        try:
+            try:
+                from speechbrain.inference import EncoderClassifier  # speechbrain >= 1.0
+            except ImportError:
+                from speechbrain.pretrained import EncoderClassifier
+        except ImportError:
+            print("WARNING: speechbrain not installed. Install with: pip install speechbrain")
+            print("Returning NaN for speaker similarity.")
+            return None
+        _speaker_classifier = EncoderClassifier.from_hparams(
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            run_opts={"device": "cpu"},
+        )
+    return _speaker_classifier
+
+
 def compute_speaker_similarity(
     audio_a: np.ndarray,
     audio_b: np.ndarray,
@@ -86,24 +109,15 @@ def compute_speaker_similarity(
         Cosine similarity score (-1 to 1, higher means more similar speakers).
     """
     import torch
-    import torchaudio
 
-    try:
-        from speechbrain.pretrained import EncoderClassifier
-    except ImportError:
-        print("WARNING: speechbrain not installed. Install with: pip install speechbrain")
-        print("Returning NaN for speaker similarity.")
+    classifier = _get_speaker_classifier()
+    if classifier is None:
         return float("nan")
 
     # Resample to 16kHz for SpeechBrain
     target_sr = 16000
     a = resample(audio_a, sr, target_sr)
     b = resample(audio_b, sr, target_sr)
-
-    classifier = EncoderClassifier.from_hparams(
-        source="speechbrain/spkrec-ecapa-voxceleb",
-        run_opts={"device": "cpu"},
-    )
 
     emb_a = classifier.encode_batch(torch.tensor(a).unsqueeze(0))
     emb_b = classifier.encode_batch(torch.tensor(b).unsqueeze(0))
@@ -117,15 +131,24 @@ def compute_speaker_similarity(
 def optimal_codebook_count(
     sweep_results: list[dict],
     metric: str = "pesq",
-    min_gain: float = 0.1,
+    fraction_of_range: float = 0.9,
+    min_gain: Optional[float] = None,
 ) -> int:
-    """Find the codebook count where adding more stops meaningfully improving quality.
+    """Find the smallest codebook count achieving most of the available quality.
+
+    Returns the smallest count whose metric reaches
+    ``min + fraction_of_range * (max - min)`` across the sweep. This is robust
+    to non-monotonic marginal gains, which broke the earlier
+    "first gain below threshold" heuristic (the 2026-07-02 run of exp 01 has
+    per-codebook gains that dip at n=3 and then rise again through n=32).
 
     Args:
         sweep_results: List of dicts with keys 'codebooks', 'pesq', 'stoi',
             and optionally 'speaker_similarity'.
         metric: Which metric to analyze ('pesq', 'stoi', or 'speaker_similarity').
-        min_gain: Minimum marginal gain to justify adding another codebook.
+        fraction_of_range: How much of the metric's observed range must be
+            reached (0.9 = within 10% of the best observed quality).
+        min_gain: Deprecated, ignored. Kept for call-site compatibility.
 
     Returns:
         The optimal number of codebooks (sweet spot).
@@ -136,12 +159,12 @@ def optimal_codebook_count(
     if len(sorted_results) <= 1:
         return sorted_results[0]["codebooks"] if sorted_results else 1
 
-    for i in range(1, len(sorted_results)):
-        prev_val = sorted_results[i - 1][metric]
-        curr_val = sorted_results[i][metric]
-        gain = curr_val - prev_val
-        if gain < min_gain:
-            return sorted_results[i - 1]["codebooks"]
+    values = [r[metric] for r in sorted_results]
+    threshold = min(values) + fraction_of_range * (max(values) - min(values))
+
+    for r in sorted_results:
+        if r[metric] >= threshold:
+            return r["codebooks"]
 
     return sorted_results[-1]["codebooks"]
 

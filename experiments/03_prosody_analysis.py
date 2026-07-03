@@ -1,7 +1,8 @@
-"""Experiment 03: Prosody & Emotion Analysis.
+"""Experiment 03: Prosody vs Codebook Count.
 
-Tests whether semantic tokens preserve HOW something is said, not just WHAT.
-Compares pitch contours (F0) between original and semantic-only reconstruction.
+Finds the codebook count at which prosody (pitch contour) survives transmission.
+Sweeps codebook counts and measures F0 correlation between the original and each
+reconstruction. Success criterion: correlation > 0.7.
 """
 
 import sys
@@ -13,10 +14,14 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
+from src.results_io import save_metrics
 from src.utils import download_librispeech_sample, load_audio, save_audio
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 AUDIO_DIR = Path(__file__).resolve().parent.parent / "audio"
+
+SWEEP_POINTS = [1, 2, 4, 8, 16, 32]
+CORRELATION_THRESHOLD = 0.7
 
 
 def extract_pitch(audio: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
@@ -49,24 +54,15 @@ def pitch_correlation(f0_a: np.ndarray, f0_b: np.ndarray) -> float:
     return float(np.corrcoef(a[mask], b[mask])[0, 1])
 
 
-def run_experiment():
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    print("=" * 70)
-    print("EXPERIMENT 03: Prosody & Emotion Analysis")
-    print("=" * 70)
-
-    codec = MimiCodec(device="cpu")
-
-    # Collect test audio
+def collect_test_samples() -> dict:
+    """Collect prosody test samples: local emotional recordings + LibriSpeech."""
     test_samples = {}
 
-    # Check for local emotional audio
     emotional_files = {
         "happy": "emotional_happy",
         "question": "emotional_question",
         "frustrated": "emotional_frustrated",
     }
-
     for label, prefix in emotional_files.items():
         if AUDIO_DIR.exists():
             matches = list(AUDIO_DIR.glob(f"{prefix}.*"))
@@ -74,63 +70,85 @@ def run_experiment():
                 audio, sr = load_audio(matches[0])
                 test_samples[label] = (audio, sr)
 
-    # Always include a LibriSpeech sample as baseline
     print("Loading LibriSpeech baseline sample...")
     audio, sr = download_librispeech_sample()
     test_samples["librispeech_baseline"] = (audio, sr)
+    return test_samples
 
-    results = {}
+
+def run_experiment():
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    print("=" * 70)
+    print("EXPERIMENT 03: Prosody vs Codebook Count")
+    print("=" * 70)
+
+    codec = MimiCodec(device="cpu")
+    test_samples = collect_test_samples()
+    if len(test_samples) == 1:
+        print("NOTE: no emotional recordings in audio/ (emotional_happy.wav etc.);")
+        print("      running on LibriSpeech only. Record varied clips for a stronger test.")
+
+    results: dict[str, dict] = {}
 
     for label, (audio, sr) in test_samples.items():
         print(f"\n--- Processing: {label} ---")
-
-        # Encode and reconstruct
         tokens = codec.encode(audio, sr=sr)
-        full_recon = codec.decode(tokens)
-        semantic_recon = codec.reconstruct_semantic_only(tokens)
+        sweep_points = [n for n in SWEEP_POINTS if n <= tokens.shape[1]]
 
-        # Extract pitch contours
-        print(f"  Extracting pitch contours...")
+        print("  Extracting original pitch contour...")
         t_orig, f0_orig = extract_pitch(audio, sr)
-        t_full, f0_full = extract_pitch(full_recon, sr)
-        t_sem, f0_sem = extract_pitch(semantic_recon, sr)
 
-        # Compute correlations
-        corr_full = pitch_correlation(f0_orig, f0_full)
-        corr_semantic = pitch_correlation(f0_orig, f0_sem)
+        per_count = []
+        contours = {}
+        for n in sweep_points:
+            recon = codec.reconstruct_with_n_codebooks(tokens, n)
+            t_rec, f0_rec = extract_pitch(recon, sr)
+            corr = pitch_correlation(f0_orig, f0_rec)
+            per_count.append({"codebooks": n, "pitch_correlation": corr})
+            contours[n] = (t_rec, f0_rec)
+            corr_str = f"{corr:.3f}" if not np.isnan(corr) else "N/A"
+            print(f"  {n:>2} codebook(s): F0 correlation = {corr_str}")
+            if n in (1, 4, 32):
+                save_audio(recon, RESULTS_DIR / f"03_{label}_cb{n:02d}_{timestamp}.wav", sr)
 
+        # First count clearing the threshold
+        prosody_emerges_at = next(
+            (
+                e["codebooks"]
+                for e in per_count
+                if not np.isnan(e["pitch_correlation"])
+                and e["pitch_correlation"] > CORRELATION_THRESHOLD
+            ),
+            None,
+        )
         results[label] = {
-            "pitch_corr_full": corr_full,
-            "pitch_corr_semantic": corr_semantic,
+            "sweep": per_count,
+            "prosody_emerges_at": prosody_emerges_at,
         }
 
-        print(f"  Pitch correlation (full recon):     {corr_full:.3f}")
-        print(f"  Pitch correlation (semantic-only):   {corr_semantic:.3f}")
-
-        # Save audio
-        save_audio(semantic_recon, RESULTS_DIR / f"03_{label}_semantic_{timestamp}.wav", sr)
-
-        # Plot pitch contours
+        # Plot original vs selected reconstructions
         try:
             import matplotlib.pyplot as plt
 
-            fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
-
+            plot_counts = [n for n in (1, 4, 32) if n in contours]
+            fig, axes = plt.subplots(
+                1 + len(plot_counts), 1, figsize=(12, 3 * (1 + len(plot_counts))), sharex=True
+            )
             axes[0].plot(t_orig, f0_orig, "b-", alpha=0.7)
             axes[0].set_ylabel("F0 (Hz)")
             axes[0].set_title(f"{label} — Original")
             axes[0].set_ylim(50, 400)
 
-            axes[1].plot(t_full, f0_full, "g-", alpha=0.7)
-            axes[1].set_ylabel("F0 (Hz)")
-            axes[1].set_title(f"{label} — Full Reconstruction (corr={corr_full:.3f})")
-            axes[1].set_ylim(50, 400)
-
-            axes[2].plot(t_sem, f0_sem, "r-", alpha=0.7)
-            axes[2].set_ylabel("F0 (Hz)")
-            axes[2].set_title(f"{label} — Semantic Only (corr={corr_semantic:.3f})")
-            axes[2].set_ylim(50, 400)
-            axes[2].set_xlabel("Time (s)")
+            for ax, n in zip(axes[1:], plot_counts):
+                t_rec, f0_rec = contours[n]
+                corr = next(
+                    e["pitch_correlation"] for e in per_count if e["codebooks"] == n
+                )
+                ax.plot(t_rec, f0_rec, "r-", alpha=0.7)
+                ax.set_ylabel("F0 (Hz)")
+                ax.set_title(f"{label} — {n} codebook(s) (corr={corr:.3f})")
+                ax.set_ylim(50, 400)
+            axes[-1].set_xlabel("Time (s)")
 
             plt.tight_layout()
             plt.savefig(RESULTS_DIR / f"03_{label}_pitch_{timestamp}.png", dpi=150)
@@ -140,14 +158,20 @@ def run_experiment():
 
     # Summary
     print("\n" + "=" * 65)
-    print(f"{'Sample':<25} {'Full Corr':>12} {'Semantic Corr':>14}")
+    print(f"{'Sample':<25} {'Prosody emerges at':>20}")
     print("-" * 65)
     for label, r in results.items():
-        fc = f"{r['pitch_corr_full']:.3f}" if not np.isnan(r["pitch_corr_full"]) else "N/A"
-        sc = f"{r['pitch_corr_semantic']:.3f}" if not np.isnan(r["pitch_corr_semantic"]) else "N/A"
-        print(f"{label:<25} {fc:>12} {sc:>14}")
+        at = r["prosody_emerges_at"]
+        print(f"{label:<25} {str(at) + ' codebook(s)' if at else 'never (>0.7)':>20}")
     print("=" * 65)
 
+    save_metrics(
+        "03_prosody_sweep",
+        {
+            "correlation_threshold": CORRELATION_THRESHOLD,
+            "per_sample": results,
+        },
+    )
     return results
 
 

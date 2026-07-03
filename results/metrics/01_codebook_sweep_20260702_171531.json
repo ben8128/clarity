@@ -1,0 +1,381 @@
+{
+  "experiment_id": "01_codebook_sweep",
+  "timestamp": "2026-07-02T17:15:31.292918",
+  "git_sha": "16fcbc7efc8c9b3bc28f8f862228ca3da7b41420",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.10.0",
+    "transformers": "5.2.0",
+    "numpy": "2.3.5",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "samples": [
+      "airplane_handheld",
+      "librispeech_0",
+      "librispeech_1"
+    ],
+    "num_codebooks": 32,
+    "sweep_points": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      12,
+      16,
+      24,
+      32
+    ],
+    "per_sample": {
+      "1": [
+        {
+          "codebooks": 1,
+          "pesq": NaN,
+          "stoi": 0.0269422391957034,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 1,
+          "pesq": 1.060552954673767,
+          "stoi": 0.4919393321229382,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 1,
+          "pesq": 1.0728509426116943,
+          "stoi": 0.48700995071432834,
+          "speaker_similarity": NaN
+        }
+      ],
+      "2": [
+        {
+          "codebooks": 2,
+          "pesq": NaN,
+          "stoi": 0.08502046461614551,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 2,
+          "pesq": 1.170109510421753,
+          "stoi": 0.7364028166631901,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 2,
+          "pesq": 1.1994460821151733,
+          "stoi": 0.7477514907806313,
+          "speaker_similarity": NaN
+        }
+      ],
+      "3": [
+        {
+          "codebooks": 3,
+          "pesq": NaN,
+          "stoi": 0.1317161900982031,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 3,
+          "pesq": 1.2798190116882324,
+          "stoi": 0.7957260205855585,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 3,
+          "pesq": 1.2462730407714844,
+          "stoi": 0.7830728703371784,
+          "speaker_similarity": NaN
+        }
+      ],
+      "4": [
+        {
+          "codebooks": 4,
+          "pesq": NaN,
+          "stoi": 0.16407963495776695,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 4,
+          "pesq": 1.4633216857910156,
+          "stoi": 0.8292231556047552,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 4,
+          "pesq": 1.3975119590759277,
+          "stoi": 0.8144948633534287,
+          "speaker_similarity": NaN
+        }
+      ],
+      "5": [
+        {
+          "codebooks": 5,
+          "pesq": NaN,
+          "stoi": 0.2026010903477383,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 5,
+          "pesq": 1.570699691772461,
+          "stoi": 0.8584604323076749,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 5,
+          "pesq": 1.7025785446166992,
+          "stoi": 0.8473975281816666,
+          "speaker_similarity": NaN
+        }
+      ],
+      "6": [
+        {
+          "codebooks": 6,
+          "pesq": NaN,
+          "stoi": 0.24748806115054528,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 6,
+          "pesq": 1.684852123260498,
+          "stoi": 0.8861549782682203,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 6,
+          "pesq": 1.9584234952926636,
+          "stoi": 0.8670124428409982,
+          "speaker_similarity": NaN
+        }
+      ],
+      "7": [
+        {
+          "codebooks": 7,
+          "pesq": NaN,
+          "stoi": 0.2686355302863948,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 7,
+          "pesq": 1.8569449186325073,
+          "stoi": 0.893035670920811,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 7,
+          "pesq": 2.095907688140869,
+          "stoi": 0.8813900212425154,
+          "speaker_similarity": NaN
+        }
+      ],
+      "8": [
+        {
+          "codebooks": 8,
+          "pesq": NaN,
+          "stoi": 0.3013407987502571,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 8,
+          "pesq": 1.994713306427002,
+          "stoi": 0.8985455423405414,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 8,
+          "pesq": 2.215488910675049,
+          "stoi": 0.8920897903855021,
+          "speaker_similarity": NaN
+        }
+      ],
+      "12": [
+        {
+          "codebooks": 12,
+          "pesq": NaN,
+          "stoi": 0.3872188973950985,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 12,
+          "pesq": 2.401839017868042,
+          "stoi": 0.9221567542200283,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 12,
+          "pesq": 2.6487858295440674,
+          "stoi": 0.9221220119144796,
+          "speaker_similarity": NaN
+        }
+      ],
+      "16": [
+        {
+          "codebooks": 16,
+          "pesq": NaN,
+          "stoi": 0.4702572570387271,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 16,
+          "pesq": 2.7444050312042236,
+          "stoi": 0.9386038651099567,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 16,
+          "pesq": 2.870650053024292,
+          "stoi": 0.93735106582316,
+          "speaker_similarity": NaN
+        }
+      ],
+      "24": [
+        {
+          "codebooks": 24,
+          "pesq": NaN,
+          "stoi": 0.5856868552187945,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 24,
+          "pesq": 3.101808786392212,
+          "stoi": 0.953011195805581,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 24,
+          "pesq": 3.255621910095215,
+          "stoi": 0.9514940808664536,
+          "speaker_similarity": NaN
+        }
+      ],
+      "32": [
+        {
+          "codebooks": 32,
+          "pesq": NaN,
+          "stoi": 0.6428780824980567,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 32,
+          "pesq": 3.332770347595215,
+          "stoi": 0.9607890576099487,
+          "speaker_similarity": NaN
+        },
+        {
+          "codebooks": 32,
+          "pesq": 3.5673768520355225,
+          "stoi": 0.9597988604182336,
+          "speaker_similarity": NaN
+        }
+      ]
+    },
+    "averaged": [
+      {
+        "codebooks": 1,
+        "pesq": 1.0667019486427307,
+        "stoi": 0.33529717401099,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 137.5,
+        "vs_opus_savings": 0.9942708333333333
+      },
+      {
+        "codebooks": 2,
+        "pesq": 1.1847777962684631,
+        "stoi": 0.5230582573533223,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 275.0,
+        "vs_opus_savings": 0.9885416666666667
+      },
+      {
+        "codebooks": 3,
+        "pesq": 1.2630460262298584,
+        "stoi": 0.5701716936736467,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 412.5,
+        "vs_opus_savings": 0.9828125
+      },
+      {
+        "codebooks": 4,
+        "pesq": 1.4304168224334717,
+        "stoi": 0.6025992179719837,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 550.0,
+        "vs_opus_savings": 0.9770833333333333
+      },
+      {
+        "codebooks": 5,
+        "pesq": 1.63663911819458,
+        "stoi": 0.6361530169456933,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 687.5,
+        "vs_opus_savings": 0.9713541666666666
+      },
+      {
+        "codebooks": 6,
+        "pesq": 1.8216378092765808,
+        "stoi": 0.6668851607532545,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 825.0,
+        "vs_opus_savings": 0.965625
+      },
+      {
+        "codebooks": 7,
+        "pesq": 1.9764263033866882,
+        "stoi": 0.6810204074832406,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 962.5,
+        "vs_opus_savings": 0.9598958333333333
+      },
+      {
+        "codebooks": 8,
+        "pesq": 2.1051011085510254,
+        "stoi": 0.697325377158767,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 1100.0,
+        "vs_opus_savings": 0.9541666666666667
+      },
+      {
+        "codebooks": 12,
+        "pesq": 2.5253124237060547,
+        "stoi": 0.7438325545098688,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 1650.0,
+        "vs_opus_savings": 0.93125
+      },
+      {
+        "codebooks": 16,
+        "pesq": 2.807527542114258,
+        "stoi": 0.7820707293239479,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 2200.0,
+        "vs_opus_savings": 0.9083333333333333
+      },
+      {
+        "codebooks": 24,
+        "pesq": 3.1787153482437134,
+        "stoi": 0.8300640439636098,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 3300.0,
+        "vs_opus_savings": 0.8625
+      },
+      {
+        "codebooks": 32,
+        "pesq": 3.4500735998153687,
+        "stoi": 0.8544886668420797,
+        "speaker_similarity": NaN,
+        "bitrate_bps": 4400.0,
+        "vs_opus_savings": 0.8166666666666667
+      }
+    ],
+    "sweet_spot": {
+      "codebooks": 2,
+      "bitrate_bps": 275.0,
+      "vs_opus_savings": 0.9885416666666667
+    }
+  }
+}

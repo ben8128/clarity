@@ -1,7 +1,11 @@
-"""Experiment 04: Speaker Embedding / Voice Cross-Combination.
+"""Experiment 04: Speaker Identity vs Codebook Count.
 
-Tests whether acoustic tokens carry speaker identity independently of content.
-Cross-combines semantic tokens from Speaker A with acoustic tokens from Speaker B.
+Primary question: at which codebook count does speaker identity survive
+transmission? Sweeps codebook counts for two speakers and measures ECAPA-TDNN
+speaker similarity between each speaker's original audio and reconstruction.
+
+Secondary probe: cross-combines semantic tokens from Speaker A with acoustic
+tokens from Speaker B to verify acoustic tokens carry the identity.
 """
 
 import sys
@@ -14,10 +18,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
 from src.quality import compute_speaker_similarity
+from src.results_io import save_metrics
 from src.utils import download_librispeech_sample, load_audio, save_audio
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 AUDIO_DIR = Path(__file__).resolve().parent.parent / "audio"
+
+SWEEP_POINTS = [1, 2, 4, 8, 16, 32]
+SIMILARITY_THRESHOLD = 0.7
 
 
 def find_two_speakers() -> dict[str, tuple[np.ndarray, int]]:
@@ -42,15 +50,20 @@ def find_two_speakers() -> dict[str, tuple[np.ndarray, int]]:
             trust_remote_code=True,
         )
 
-        # Use first two samples as different "speakers"
-        for i, label in enumerate(["speaker_A", "speaker_B"]):
-            if label not in speakers and len(speakers) < 2:
-                sample = ds[i]
-                audio = np.array(sample["audio"]["array"], dtype=np.float32)
-                orig_sr = sample["audio"]["sampling_rate"]
-                from src.utils import resample
-                audio_24k = resample(audio, orig_sr, 24000)
-                speakers[label] = (audio_24k, 24000)
+        # Pick samples with different speaker ids where possible
+        seen_ids = set()
+        from src.utils import resample
+
+        for sample in ds:
+            if len(speakers) >= 2:
+                break
+            speaker_id = sample.get("speaker_id", len(seen_ids))
+            if speaker_id in seen_ids:
+                continue
+            seen_ids.add(speaker_id)
+            audio = np.array(sample["audio"]["array"], dtype=np.float32)
+            audio_24k = resample(audio, sample["audio"]["sampling_rate"], 24000)
+            speakers[f"speaker_{speaker_id}"] = (audio_24k, 24000)
 
     return speakers
 
@@ -58,7 +71,7 @@ def find_two_speakers() -> dict[str, tuple[np.ndarray, int]]:
 def run_experiment():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     print("=" * 70)
-    print("EXPERIMENT 04: Speaker Embedding / Cross-Combination")
+    print("EXPERIMENT 04: Speaker Identity vs Codebook Count")
     print("=" * 70)
 
     codec = MimiCodec(device="cpu")
@@ -76,81 +89,93 @@ def run_experiment():
     print(f"\nSpeaker A: {name_a} ({len(audio_a)/sr_a:.2f}s)")
     print(f"Speaker B: {name_b} ({len(audio_b)/sr_b:.2f}s)")
 
-    # Encode both
-    print("\nEncoding Speaker A...")
-    tokens_a = codec.encode(audio_a, sr=sr_a)
-    print("Encoding Speaker B...")
-    tokens_b = codec.encode(audio_b, sr=sr_b)
+    tokens = {
+        name_a: codec.encode(audio_a, sr=sr_a),
+        name_b: codec.encode(audio_b, sr=sr_b),
+    }
+    codec.report_codebook_info(tokens[name_a])
 
-    codec.report_codebook_info(tokens_a)
+    # === TEST 1: Speaker similarity vs codebook count ===
+    print("\n--- TEST 1: Speaker similarity vs codebook count ---")
+    sweep_points = [n for n in SWEEP_POINTS if n <= tokens[name_a].shape[1]]
+    sweep: dict[str, list[dict]] = {}
 
-    # Extract components
-    semantic_a = codec.extract_semantic(tokens_a)
-    acoustic_a = codec.extract_acoustic(tokens_a)
-    semantic_b = codec.extract_semantic(tokens_b)
-    acoustic_b = codec.extract_acoustic(tokens_b)
+    for name, audio, sr in ((name_a, audio_a, sr_a), (name_b, audio_b, sr_b)):
+        print(f"\n  {name}:")
+        sweep[name] = []
+        for n in sweep_points:
+            recon = codec.reconstruct_with_n_codebooks(tokens[name], n)
+            sim = compute_speaker_similarity(audio, recon, sr)
+            sweep[name].append({"codebooks": n, "speaker_similarity": sim})
+            print(f"    {n:>2} codebook(s): similarity = {sim:.3f}")
+            if name == name_a and n in (1, 4, 8, 32):
+                save_audio(recon, RESULTS_DIR / f"04_{name}_cb{n:02d}_{timestamp}.wav", sr)
 
-    # Reconstructions
-    print("\nCreating reconstructions...")
+    # First count clearing the threshold, per speaker
+    identity_emerges_at = {}
+    for name, entries in sweep.items():
+        identity_emerges_at[name] = next(
+            (
+                e["codebooks"]
+                for e in entries
+                if not np.isnan(e["speaker_similarity"])
+                and e["speaker_similarity"] > SIMILARITY_THRESHOLD
+            ),
+            None,
+        )
 
-    full_a = codec.decode(tokens_a)
-    full_b = codec.decode(tokens_b)
-    semantic_only_a = codec.reconstruct_semantic_only(tokens_a)
+    # === TEST 2: Cross-combination probe ===
+    print("\n--- TEST 2: Cross-combination (A's words, B's voice) ---")
+    semantic_a = codec.extract_semantic(tokens[name_a])
+    acoustic_a = codec.extract_acoustic(tokens[name_a])
+    semantic_b = codec.extract_semantic(tokens[name_b])
+    acoustic_b = codec.extract_acoustic(tokens[name_b])
 
-    # Cross-combination: A's words in B's voice
     cross_ab = codec.reconstruct_with_modified_acoustic(semantic_a, acoustic_b)
-    # Cross-combination: B's words in A's voice
     cross_ba = codec.reconstruct_with_modified_acoustic(semantic_b, acoustic_a)
 
-    # Save audio
-    save_audio(full_a, RESULTS_DIR / f"04_{name_a}_full_{timestamp}.wav")
-    save_audio(full_b, RESULTS_DIR / f"04_{name_b}_full_{timestamp}.wav")
-    save_audio(semantic_only_a, RESULTS_DIR / f"04_{name_a}_semantic_only_{timestamp}.wav")
     save_audio(cross_ab, RESULTS_DIR / f"04_cross_{name_a}sem_{name_b}aco_{timestamp}.wav")
     save_audio(cross_ba, RESULTS_DIR / f"04_cross_{name_b}sem_{name_a}aco_{timestamp}.wav")
 
-    # Speaker similarity analysis
-    print("\nComputing speaker similarity scores...")
-    print("(This uses SpeechBrain ECAPA-TDNN — may need to download model)")
-
-    similarities = {}
-
+    cross_similarities = {}
     comparisons = [
-        (f"A_full vs A_full", audio_a, full_a, sr_a),
-        (f"A_full vs A_semantic", audio_a, semantic_only_a, sr_a),
-        (f"A_full vs cross_AB", audio_a, cross_ab, sr_a),
-        (f"B_full vs cross_AB", audio_b, cross_ab, sr_b),
-        (f"B_full vs cross_BA", audio_b, cross_ba, sr_b),
-        (f"A_full vs cross_BA", audio_a, cross_ba, sr_a),
+        ("A_orig vs cross_AB", audio_a, cross_ab, sr_a),
+        ("B_orig vs cross_AB", audio_b, cross_ab, sr_b),
+        ("B_orig vs cross_BA", audio_b, cross_ba, sr_b),
+        ("A_orig vs cross_BA", audio_a, cross_ba, sr_a),
     ]
-
     for label, ref, test, sr in comparisons:
         try:
             sim = compute_speaker_similarity(ref, test, sr)
-            similarities[label] = sim
-            print(f"  {label}: {sim:.3f}")
         except Exception as e:
             print(f"  {label}: FAILED ({e})")
-            similarities[label] = float("nan")
+            sim = float("nan")
+        cross_similarities[label] = sim
+        print(f"  {label}: {sim:.3f}")
 
     # Summary
     print("\n" + "=" * 70)
     print("EXPERIMENT 04 SUMMARY")
     print("=" * 70)
-    print(f"\n{'Comparison':<30} {'Similarity':>12}")
-    print("-" * 45)
-    for label, sim in similarities.items():
-        sim_str = f"{sim:.3f}" if not np.isnan(sim) else "N/A"
-        print(f"{label:<30} {sim_str:>12}")
-    print("-" * 45)
-
-    print("\nInterpretation:")
-    print("  - A_full vs cross_AB should be LOW (different speaker identity)")
-    print("  - B_full vs cross_AB should be HIGH (same speaker identity)")
-    print("  - This validates that acoustic tokens carry speaker identity")
+    for name, at in identity_emerges_at.items():
+        at_str = f"{at} codebook(s)" if at else f"never (> {SIMILARITY_THRESHOLD})"
+        print(f"  {name}: identity emerges at {at_str}")
+    print("\nCross-combination interpretation:")
+    print("  - A_orig vs cross_AB should be LOW (identity came from B)")
+    print("  - B_orig vs cross_AB should be HIGH (acoustic tokens carry identity)")
     print(f"\nAudio saved to: {RESULTS_DIR}/")
 
-    return similarities
+    save_metrics(
+        "04_speaker_sweep",
+        {
+            "similarity_threshold": SIMILARITY_THRESHOLD,
+            "speakers": speaker_names,
+            "sweep": sweep,
+            "identity_emerges_at": identity_emerges_at,
+            "cross_combination": cross_similarities,
+        },
+    )
+    return sweep
 
 
 if __name__ == "__main__":

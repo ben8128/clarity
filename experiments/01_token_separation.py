@@ -200,7 +200,7 @@ def run_experiment():
 
     # Step 6: Sweet spot detection
     print("\n--- Step 6: Sweet Spot Detection ---")
-    sweet_spot = optimal_codebook_count(sweep_results, metric="pesq", min_gain=0.1)
+    sweet_spot = optimal_codebook_count(sweep_results, metric="pesq")
     sweet_bitrate = codec.get_bitrate(sweet_spot)
     sweet_savings = codec.get_bandwidth_savings_vs_opus(sweet_spot)
     print(f"Sweet spot: {sweet_spot} codebook(s)")

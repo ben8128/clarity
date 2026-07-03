@@ -186,26 +186,40 @@ class TestOptimalCodebookCount:
     def test_clear_knee(self):
         from src.quality import optimal_codebook_count
 
-        # Quality jumps sharply at 1-3, then plateaus
+        # Quality jumps sharply at 1-3, then plateaus: n=3 reaches 90% of range
         results = [
             {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
             {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
             {"codebooks": 3, "pesq": 2.8, "stoi": 0.75},
-            {"codebooks": 4, "pesq": 2.85, "stoi": 0.77},  # gain < 0.1
+            {"codebooks": 4, "pesq": 2.85, "stoi": 0.77},
             {"codebooks": 5, "pesq": 2.87, "stoi": 0.78},
         ]
-        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 3
+        assert optimal_codebook_count(results, metric="pesq") == 3
 
-    def test_never_drops_below(self):
+    def test_non_monotonic_gains_do_not_fool_detector(self):
         from src.quality import optimal_codebook_count
 
-        # Every step has large gain
+        # Marginal gain dips at n=3 then rises again (the 2026-07-02 exp 01
+        # curve shape) — the detector must not stop at the dip
+        results = [
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.3},
+            {"codebooks": 2, "pesq": 1.2, "stoi": 0.5},
+            {"codebooks": 3, "pesq": 1.25, "stoi": 0.55},  # small gain here
+            {"codebooks": 4, "pesq": 2.0, "stoi": 0.6},
+            {"codebooks": 8, "pesq": 3.0, "stoi": 0.8},
+        ]
+        assert optimal_codebook_count(results, metric="pesq") == 8
+
+    def test_steady_climb_returns_max(self):
+        from src.quality import optimal_codebook_count
+
+        # Every step has large gain — no knee, return the top
         results = [
             {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
             {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
             {"codebooks": 3, "pesq": 3.0, "stoi": 0.8},
         ]
-        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 3
+        assert optimal_codebook_count(results, metric="pesq") == 3
 
     def test_single_entry(self):
         from src.quality import optimal_codebook_count
@@ -219,20 +233,31 @@ class TestOptimalCodebookCount:
         results = [
             {"codebooks": 1, "pesq": 1.0, "stoi": 0.3},
             {"codebooks": 2, "pesq": 1.5, "stoi": 0.6},
-            {"codebooks": 3, "pesq": 2.0, "stoi": 0.65},  # stoi gain < 0.1
+            {"codebooks": 3, "pesq": 2.0, "stoi": 0.65},
         ]
-        assert optimal_codebook_count(results, metric="stoi", min_gain=0.1) == 2
+        assert optimal_codebook_count(results, metric="stoi") == 3
+
+    def test_fraction_of_range_tunable(self):
+        from src.quality import optimal_codebook_count
+
+        results = [
+            {"codebooks": 1, "pesq": 1.0, "stoi": 0.3},
+            {"codebooks": 2, "pesq": 1.5, "stoi": 0.6},
+            {"codebooks": 3, "pesq": 2.0, "stoi": 0.65},
+        ]
+        # 50% of range on stoi: threshold 0.475 → n=2
+        assert optimal_codebook_count(results, metric="stoi", fraction_of_range=0.5) == 2
 
     def test_unsorted_input(self):
         from src.quality import optimal_codebook_count
 
         # Input not sorted by codebook count — function should handle it
         results = [
-            {"codebooks": 3, "pesq": 2.05, "stoi": 0.77},  # gain 0.05 < 0.1
+            {"codebooks": 3, "pesq": 2.05, "stoi": 0.77},
             {"codebooks": 1, "pesq": 1.0, "stoi": 0.4},
             {"codebooks": 2, "pesq": 2.0, "stoi": 0.6},
         ]
-        assert optimal_codebook_count(results, metric="pesq", min_gain=0.1) == 2
+        assert optimal_codebook_count(results, metric="pesq") == 2
 
 
 class TestUtilityFunctions:
