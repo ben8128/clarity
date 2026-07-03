@@ -1,0 +1,67 @@
+{
+  "experiment_id": "10_harness_selftest_upper_clean",
+  "timestamp": "2026-07-03T09:55:03.268558",
+  "git_sha": "8df0a46fbd1ea095a8dc25a9789e1b573fccfe64",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "arm": "upper_clean",
+    "per_message": [
+      {
+        "sim": 0.9122814536094666,
+        "dnsmos": 3.543845293336587,
+        "wer": 0.0,
+        "f0_corr": 0.9947848433157016,
+        "source_dnsmos": 2.8693795970275056,
+        "id": "recording_0_000125300"
+      },
+      {
+        "sim": 0.8977212905883789,
+        "dnsmos": 3.5211413151554942,
+        "wer": 0.0,
+        "f0_corr": 0.9902820643708388,
+        "source_dnsmos": 2.9031589557934683,
+        "id": "recording_0_000147300"
+      },
+      {
+        "sim": 0.8972660303115845,
+        "dnsmos": 3.4975885621105243,
+        "wer": 0.0,
+        "f0_corr": 0.9847919545963336,
+        "source_dnsmos": 2.8763346004163304,
+        "id": "recording_0_000099300"
+      },
+      {
+        "sim": 0.9079391956329346,
+        "dnsmos": 3.475590070428818,
+        "wer": 0.0,
+        "f0_corr": 0.997563142570144,
+        "source_dnsmos": 2.7825209129203476,
+        "id": "recording_0_000025600"
+      },
+      {
+        "sim": 0.8236688375473022,
+        "dnsmos": 3.437063797073795,
+        "wer": 0.0,
+        "f0_corr": 0.9839739524100523,
+        "source_dnsmos": 2.635077797921696,
+        "id": "recording_2_000148100"
+      }
+    ],
+    "means": {
+      "sim": 0.8877753615379333,
+      "dnsmos": 3.495045807621043,
+      "wer": 0.0,
+      "f0_corr": 0.9902791914526141,
+      "source_dnsmos": 2.8132943728158692,
+      "beats_microphone": true
+    }
+  }
+}

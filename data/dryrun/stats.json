@@ -1,0 +1,27 @@
+{
+  "source_files": 3,
+  "segments_kept": 42,
+  "eval_segments": 20,
+  "total_hours": 0.07,
+  "dnsmos_mean": 3.296,
+  "dnsmos_p10": 3.017,
+  "dnsmos_p90": 3.486,
+  "tiers": {
+    "5min": {
+      "segments": 42,
+      "minutes": 4.5
+    },
+    "30min": {
+      "segments": 42,
+      "minutes": 4.5
+    },
+    "1h": {
+      "segments": 42,
+      "minutes": 4.5
+    },
+    "3h": {
+      "segments": 42,
+      "minutes": 4.5
+    }
+  }
+}
