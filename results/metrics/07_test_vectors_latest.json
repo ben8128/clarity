@@ -1,0 +1,30 @@
+{
+  "experiment_id": "07_test_vectors",
+  "timestamp": "2026-07-02T17:29:06.162603",
+  "git_sha": "ec648ca8731f7bd6db095d9b30bccf7bffe99084",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "exported": [
+      {
+        "label": "librispeech_clean",
+        "num_codebooks": 32,
+        "num_frames": 63,
+        "tokens_json": "/Users/ben/code/clarity/results/vectors/librispeech_clean.tokens.json"
+      },
+      {
+        "label": "airplane_handheld",
+        "num_codebooks": 32,
+        "num_frames": 63,
+        "tokens_json": "/Users/ben/code/clarity/results/vectors/airplane_handheld.tokens.json"
+      }
+    ]
+  }
+}

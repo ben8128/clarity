@@ -3,109 +3,128 @@
 ## Hypothesis
 
 Transmitting a tunable subset of Mimi's codebooks (1 to N) provides a continuous
-quality/bandwidth tradeoff. Even at ALL codebooks, Mimi is 96%+ smaller than Opus.
-The goal is to find the **knee of the curve** — the sweet spot where adding another
-codebook stops meaningfully improving quality — enabling crystal-clear calls on the
-worst networks.
+quality/bandwidth tradeoff. Even at ALL codebooks, Mimi is 82%+ smaller than Opus
+voice. The codebook count is a **product dial** for bandwidth conditions; the goal
+is to characterize the whole curve and pick operating tiers.
+
+**Status 2026-07-02: Phase 1 measured.** There is no sharp knee — quality climbs
+monotonically to 32 codebooks (see `docs/FINDINGS.md`). Operating tiers chosen
+from the curve:
+
+| Tier | Codebooks | Bitrate | Use |
+|---|---|---|---|
+| A | 32 | 4.4 kbps | good networks — PESQ 3.4 / STOI 0.96 / SpkSim 0.95 |
+| B | 8 | 1.1 kbps | degraded networks — STOI 0.90 / SpkSim 0.75 (clean speech) |
+| C | 0 (+ transcript) | ~bytes | floor — text now, voice later or via Pocket-TTS reconstruction (exp 09) |
+
+Tier B → A **progressive enhancement** (backfilling codebooks 8-31 so a stored
+note upgrades in place) is the headline product feature enabled by RVQ structure.
+See `docs/wire_format.md`.
 
 ## Experiments
 
-### Experiment 01: Codebook Sweep
+Metrics for every experiment are persisted via `src.results_io.save_metrics()`
+to `results/metrics/` — never stdout-only.
 
-**Goal:** Find the quality/bandwidth knee by sweeping codebook count from 1 to N.
+### Experiment 00: Zeroing vs Truncation A/B — DONE
 
-**Method:**
-1. Load 3+ audio samples (local `audio/` dir, fallback to LibriSpeech)
-2. Encode each with Mimi, sweep codebook counts 1 through N
-3. For each count: reconstruct, measure PESQ, STOI, and speaker similarity
-4. Average metrics across samples
-5. Detect sweet spot via diminishing-returns analysis (`optimal_codebook_count()`)
-6. Generate dual-axis plot (quality metrics vs bitrate with Opus reference shading)
+Quantifies the partial-decode bug (dropped codebooks were zeroed; token id 0 is
+a valid entry). Truncation is correct. Zeroing cost ~0.5 PESQ / 0.08-0.13 STOI
+at n=4/8 — all pre-fix partial-codebook numbers were pessimistic.
 
-**Success criteria:** Identify the knee — codebook count where marginal quality gain
-drops below threshold. All codebook counts remain 90%+ smaller than Opus.
+### Experiment 01: Codebook Sweep — DONE
 
-**Output:** `results/01_codebook_sweep_*.png`, `results/reconstruction_*_codebooks.wav`,
-summary table with bitrate, PESQ, STOI, speaker similarity per codebook count.
+**Goal:** Characterize quality vs codebook count from 1 to N.
 
----
+**Method:** 3+ samples (local `audio/` + LibriSpeech), sweep counts 1-32,
+measure PESQ/STOI/speaker-similarity per count per sample, average, detect
+sweet spot via `optimal_codebook_count()` (fraction-of-range criterion — the
+marginal-gain heuristic is broken for non-monotonic gain curves).
 
-### Experiment 03: Prosody & Emotion Analysis
+**Result:** No knee; monotonic climb. Clean speech at 8 cb: STOI 0.90,
+SpkSim 0.75. See FINDINGS.
 
-**Goal:** Find the codebook count at which prosody (pitch, rhythm, emphasis) is preserved.
+### Experiment 01b: Mimi vs Opus — DONE
 
-**Method:**
-1. Process emotionally varied speech (questions, exclamations, whispers, fast speech)
-2. Sweep codebook counts (1, 2, 4, 8, all) for each sample
-3. Compare pitch contours (F0) between original and each reconstruction
-4. Measure pitch correlation at each codebook count to find where prosody emerges
+**Result:** Mimi 32 cb (4.4 kbps) PESQ 3.33 / STOI 0.96 — above Opus 6k,
+slightly below Opus 12k, below Opus 24k. ~Opus-12k quality at ~1/3 the bits.
 
-**Success criteria:** Identify the codebook count where pitch correlation exceeds 0.7.
+### Experiment 01c: Noise Isolation — DONE (hypothesis killed)
 
-**Output:** Pitch contour plots per codebook count, correlation vs codebook count curve.
+**Result:** Mimi does NOT denoise; it reproduces noise faithfully and slightly
+damages speech (ΔSTOI negative at every SNR; airplane speech-band energy −24%).
+Clean-voice delivery requires an explicit denoise step.
 
----
+### Experiment 03: Prosody vs Codebook Count — DONE
 
-### Experiment 04: Speaker Embedding / Voice Identity vs Codebook Count
+**Goal:** Codebook count where pitch contour survives (F0 correlation > 0.7).
 
-**Goal:** Identify at which codebook count speaker identity becomes recognizable.
+**Result:** 0.92 at 2 cb, 0.99 at 8 cb — prosody lives in the first couple of
+codebooks. TODO: re-run with emotionally varied local recordings
+(`audio/emotional_{happy,question,frustrated}.wav`) — currently LibriSpeech only.
 
-**Method:**
-1. Encode Speaker A and Speaker B audio
-2. Sweep codebook counts for each speaker, measure speaker similarity vs original
-3. Cross-combine at the sweet-spot codebook count: Speaker A semantic + Speaker B acoustic
-4. Measure speaker similarity scores for all combinations
+### Experiment 04: Speaker Identity vs Codebook Count — DONE
 
-**Success criteria:** Find the codebook count where speaker similarity exceeds 0.7.
-Cross-combined audio at that count matches Speaker B's identity.
+**Goal:** Codebook count where speaker similarity exceeds 0.7; verify acoustic
+tokens carry identity via cross-combination.
 
-**Output:** Speaker similarity vs codebook count curve, cross-combined audio samples,
-similarity matrix at sweet-spot codebook count.
+**Result:** Identity emerges at 8 cb on clean speech (0.75 → 0.94 at 32).
+Cross-combination confirms: A-semantic + B-acoustic sounds like B (0.83 vs 0.16).
 
----
+### Experiment 05: Bandwidth & Packet Loss — DONE
 
-### Experiment 05: Bandwidth & Latency Measurement
+**Goal:** Quality under frame loss at the tier-B codebook count, three arms:
+A zero-fill baseline, B repeat-last PLC, C DRED-style redundancy (depth 1/2/4),
+uniform and bursty (Gilbert) patterns, rates 0-30%.
 
-**Goal:** Quantify practical performance characteristics.
+**Result:** Gate met — at 10% uniform loss, B: ΔSTOI −0.028; C depth-1
+(2.2 kbps effective): ΔSTOI 0.000. Future arm D: masked-token-prediction PLC.
 
-**Method:**
-1. Measure actual bitrates for semantic-only vs. full Mimi vs. Opus
-2. Benchmark encoding and decoding latency
-3. Simulate packet loss (5%, 10%, 20%) and measure quality degradation
+### Experiment 06: Latency Benchmark — DONE
 
-**Success criteria:** End-to-end latency < 200ms on CPU, graceful degradation under packet loss.
+**Goal:** Per-frame latency. Full-context HF chunks are a labeled desktop proxy;
+the true streaming arm (moshi package, `mimi.streaming()`) is the number that
+predicts phone behavior.
 
-**Output:** Bitrate comparison table, latency benchmarks, packet loss curves.
+**Result:** Streaming 8 cb on M-series CPU: 48.8 ms encode+decode per 80 ms
+frame (1.6x realtime). Matches T-Mimi's Galaxy S22 finding (~42 ms decode).
 
----
+### Experiment 07: Golden Test Vectors — DONE
 
-### Experiment 06: Latency Benchmark (Detailed)
+Exports (wav, tokens JSON, decoded wav) triples to `results/vectors/` for the
+iOS port compatibility check (Phase 2 M2.1 go/no-go). Wire format v0 in
+`docs/wire_format.md`.
 
-**Goal:** Profile per-component latency for real-time feasibility.
+### Experiment 08: Codec Alternatives — DEFERRED (stub)
 
-**Method:**
-1. Measure time for: audio capture → preprocessing → encoding → token extraction →
-   transmission simulation → decoding → audio output
-2. Test with varying audio chunk sizes (80ms, 160ms, 320ms)
-3. Profile CPU vs. GPU (if available)
+FocalCodec-Stream / NVIDIA NanoCodec benchmark arms. Revisit triggers
+documented in the stub docstring.
 
-**Success criteria:** Total pipeline < 150ms per chunk for real-time viability.
+### Experiment 09: Floor Tier via Pocket TTS — PHASE 3
 
-**Output:** Per-component latency breakdown, chunk size comparison.
+STCTS-style: transcript (+ sparse prosody) reconstructed by Kyutai Pocket TTS
+voice-cloned from a receiver-cached ~10s enrollment WAV. Compare speaker
+similarity + listening scores vs Mimi 8 cb. Go/no-go on tier C having voice.
 
----
+### Listening Test — PENDING (human required)
 
-## Execution Order
+`experiments/listening_test.py` — blind 1-5 ratings of
+`results/reconstruction_*_codebooks.wav`. This is a Phase-1 gate criterion.
 
-1. **Phase 0:** Project setup, dependency installation, basic codec test
-2. **Phase 1:** Experiment 01 (codebook sweep) — CRITICAL PATH, finds the knee
-3. **Phase 2:** Experiment 03 (prosody) — find codebook count where prosody is preserved
-4. **Phase 3:** Experiment 04 (speaker identity) — find codebook count for voice recognition
-5. **Phase 4:** Experiments 05-06 (bandwidth/latency) — practical feasibility
+## Phase 1 → Phase 2 gate
 
-## Decision Points
+| criterion | status |
+|---|---|
+| STOI ≥ 0.90 at ≤ 2.2 kbps (clean speech) | ✅ 8 cb / 1.1 kbps |
+| Speaker similarity ≥ 0.7 at tier B | ✅ 0.75 at 8 cb |
+| Subjective listening ≥ 4/5 at tier B | ⏳ pending |
+| A loss arm keeps ΔSTOI < 0.05 at 10% loss | ✅ arms B & C |
+| Golden vectors committed | ✅ |
 
-- After Exp 01: Sweet spot identified → use that codebook count for all subsequent experiments
-- After Exp 03: If prosody requires more codebooks than sweet spot → adjust target upward
-- After Exp 04: If speaker identity requires more codebooks → adjust target upward
-- After Exp 05: If latency > 300ms → optimize with ONNX or smaller model variants
+## Phase 2 (next): iPhone-to-iPhone voice note
+
+`ios/ClarityLab` (SwiftUI, vendored moshi-swift MLX) + `server/relay.py`
+(websocket, pairing-code rooms). Milestones: M2.1 codec-on-device vs golden
+vectors (go/no-go; fallback rustymimi via C FFI), M2.2 mic→encode→decode→speaker
+loopback with per-frame instrumentation, M2.3 two-phone note over the relay
+under Network Link Conditioner. Details in the project plan.
