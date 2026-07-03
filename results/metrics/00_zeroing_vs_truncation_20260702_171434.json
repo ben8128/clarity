@@ -1,0 +1,42 @@
+{
+  "experiment_id": "00_zeroing_vs_truncation",
+  "timestamp": "2026-07-02T17:14:34.094185",
+  "git_sha": "1bed6a3c0070ed062995e1a820fc34b98f8734c9",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.10.0",
+    "transformers": "5.2.0",
+    "numpy": "2.3.5",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "results": [
+      {
+        "codebooks": 4,
+        "variant": "truncated",
+        "pesq": 1.463321566581726,
+        "stoi": 0.8292231556047552
+      },
+      {
+        "codebooks": 4,
+        "variant": "zeroed",
+        "pesq": 1.2151647806167603,
+        "stoi": 0.6941766707907763
+      },
+      {
+        "codebooks": 8,
+        "variant": "truncated",
+        "pesq": 1.994713306427002,
+        "stoi": 0.8985455423405414
+      },
+      {
+        "codebooks": 8,
+        "variant": "zeroed",
+        "pesq": 1.4921563863754272,
+        "stoi": 0.8205781864932781
+      }
+    ]
+  }
+}

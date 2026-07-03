@@ -131,7 +131,11 @@ class MimiCodec:
         return tokens[:, 1:, :]
 
     def reconstruct_with_n_codebooks(self, tokens: torch.Tensor, n: int) -> np.ndarray:
-        """Reconstruct audio using only the first n codebooks, zeroing the rest.
+        """Reconstruct audio using only the first n codebooks (truncating the rest).
+
+        Truncation (not zeroing) is essential: token id 0 is a valid codebook
+        entry, so zeroing dropped codebooks would make the RVQ decoder sum in
+        wrong embeddings instead of omitting those quantizer layers.
 
         Args:
             tokens: Full token tensor (batch, num_codebooks, num_frames).
@@ -148,13 +152,10 @@ class MimiCodec:
             raise ValueError(
                 f"n must be between 1 and {num_codebooks}, got {n}"
             )
-        modified = tokens.clone()
-        if n < num_codebooks:
-            modified[:, n:, :] = 0
-        return self.decode(modified)
+        return self.decode(tokens[:, :n, :])
 
     def reconstruct_semantic_only(self, tokens: torch.Tensor) -> np.ndarray:
-        """Reconstruct audio using only semantic tokens (codebook 0), zeroing the rest.
+        """Reconstruct audio using only semantic tokens (codebook 0).
 
         Args:
             tokens: Full token tensor.

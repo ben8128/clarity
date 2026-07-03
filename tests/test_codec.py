@@ -109,18 +109,18 @@ class TestReconstructWithNCodebooks:
         codec.decode = fake_decode
         return codec
 
-    def test_zeros_correct_codebooks(self):
+    def test_truncates_to_first_n_codebooks(self):
         codec = self._make_codec_stub()
         tokens = self._make_tokens(8, 50)
         codec.reconstruct_with_n_codebooks(tokens, 3)
 
         decoded = codec._last_decode_input
-        # Codebooks 0-2 should be preserved
-        assert torch.equal(decoded[:, :3, :], tokens[:, :3, :])
-        # Codebooks 3-7 should be zeroed
-        assert (decoded[:, 3:, :] == 0).all()
+        # Only codebooks 0-2 are passed to the decoder — dropped codebooks
+        # must be truncated, not zeroed (token id 0 is a valid entry)
+        assert decoded.shape == (1, 3, 50)
+        assert torch.equal(decoded, tokens[:, :3, :])
 
-    def test_all_codebooks_no_zeroing(self):
+    def test_all_codebooks_passthrough(self):
         codec = self._make_codec_stub()
         tokens = self._make_tokens(8, 50)
         codec.reconstruct_with_n_codebooks(tokens, 8)
@@ -134,8 +134,8 @@ class TestReconstructWithNCodebooks:
         codec.reconstruct_with_n_codebooks(tokens, 1)
 
         decoded = codec._last_decode_input
-        assert torch.equal(decoded[:, 0:1, :], tokens[:, 0:1, :])
-        assert (decoded[:, 1:, :] == 0).all()
+        assert decoded.shape == (1, 1, 50)
+        assert torch.equal(decoded, tokens[:, 0:1, :])
 
     def test_invalid_n_raises(self):
         codec = self._make_codec_stub()
