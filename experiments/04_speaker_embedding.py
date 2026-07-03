@@ -40,30 +40,19 @@ def find_two_speakers() -> dict[str, tuple[np.ndarray, int]]:
                 speakers[prefix] = (audio, sr)
 
     if len(speakers) < 2:
-        print("Need 2 speakers. Downloading LibriSpeech samples...")
-        from datasets import load_dataset
+        # The dummy LibriSpeech set has a single speaker (1272), so fall back
+        # to LibriSpeech as speaker A and the local airplane recording (a real
+        # different voice, albeit noisy) as speaker B.
+        print("Need 2 speakers: LibriSpeech + airplane_handheld fallback...")
+        audio, sr = download_librispeech_sample()
+        speakers["librispeech_1272"] = (audio, sr)
 
-        ds = load_dataset(
-            "hf-internal-testing/librispeech_asr_dummy",
-            "clean",
-            split="validation",
-            trust_remote_code=True,
-        )
-
-        # Pick samples with different speaker ids where possible
-        seen_ids = set()
-        from src.utils import resample
-
-        for sample in ds:
-            if len(speakers) >= 2:
-                break
-            speaker_id = sample.get("speaker_id", len(seen_ids))
-            if speaker_id in seen_ids:
-                continue
-            seen_ids.add(speaker_id)
-            audio = np.array(sample["audio"]["array"], dtype=np.float32)
-            audio_24k = resample(audio, sample["audio"]["sampling_rate"], 24000)
-            speakers[f"speaker_{speaker_id}"] = (audio_24k, 24000)
+        airplane = AUDIO_DIR / "airplane_handheld.wav"
+        if airplane.exists():
+            noisy, sr2 = load_audio(airplane, target_sr=24000)
+            speakers["airplane_handheld"] = (noisy, sr2)
+            print("NOTE: speaker B is a noisy recording — similarity scores for")
+            print("      B will run lower; the sweep shape is still informative.")
 
     return speakers
 

@@ -38,22 +38,28 @@ clarity-prototype/
 ├── src/                   # Source code
 │   ├── __init__.py
 │   ├── codec.py           # Mimi codec wrapper (encode/decode/extract tokens)
-│   ├── speaker.py         # Speaker embedding extraction and management
 │   ├── quality.py         # Audio quality measurement (PESQ, STOI, similarity)
-│   ├── pipeline.py        # End-to-end encode→transmit→decode pipeline
+│   ├── results_io.py      # Metrics persistence (save_metrics/load_latest)
 │   └── utils.py           # Audio I/O, resampling, visualization helpers
+├── docs/
+│   ├── FINDINGS.md        # Running lab notebook (headline numbers per experiment)
+│   └── wire_format.md     # Token payload wire format spec
 ├── experiments/           # Experiment scripts (one per experiment)
-│   ├── 01_token_separation.py    # Codebook sweep (quality vs bandwidth)
-│   ├── 03_prosody_analysis.py
-│   ├── 04_speaker_embedding.py
-│   ├── 05_bandwidth_measurement.py
-│   ├── 06_latency_benchmark.py
-│   └── listening_test.py         # Subjective evaluation helper
-├── notebooks/             # Jupyter notebooks for interactive exploration
-├── results/               # Experiment outputs (plots, metrics, audio samples)
-│   └── .gitkeep
+│   ├── 00_zeroing_vs_truncation.py  # Partial-decode bug A/B
+│   ├── 01_token_separation.py       # Codebook sweep (quality vs bandwidth)
+│   ├── 01b_mimi_vs_opus.py          # Head-to-head vs Opus
+│   ├── 01c_noise_isolation.py       # Denoising hypothesis test (negative)
+│   ├── 03_prosody_analysis.py       # F0 correlation vs codebook count
+│   ├── 04_speaker_embedding.py      # Speaker identity vs codebook count
+│   ├── 05_bandwidth_measurement.py  # Packet-loss arms (zero/repeat/redundancy)
+│   ├── 06_latency_benchmark.py      # Full-context proxy + streaming per-frame
+│   ├── 07_export_test_vectors.py    # Golden vectors for the iOS port
+│   ├── 08_codec_alternatives.py     # Deferred stub (FocalCodec-Stream, NanoCodec)
+│   └── listening_test.py            # Subjective evaluation helper (human)
+├── results/               # Experiment outputs (audio gitignored)
+│   ├── metrics/           # Persisted metrics JSON (committed)
+│   └── vectors/           # Golden test vectors (tokens JSON committed, wav not)
 └── tests/                 # Unit tests
-    └── test_codec.py
 ```
 
 ## Commands

@@ -1,0 +1,83 @@
+{
+  "experiment_id": "06_latency",
+  "timestamp": "2026-07-02T17:26:17.752902",
+  "git_sha": "66f8de8e6cae2dec7e1e484dd539fc362a7034cb",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "full_context_proxy": [
+      {
+        "chunk_ms": 80,
+        "chunk_samples": 1920,
+        "avg_encode_ms": 33.78400922520086,
+        "avg_decode_ms": 36.43403721636989,
+        "avg_extract_ms": 0.010282331560220985,
+        "avg_total_ms": 70.21804644157076,
+        "realtime_ratio": 1.1393082555574785
+      },
+      {
+        "chunk_ms": 160,
+        "chunk_samples": 3840,
+        "avg_encode_ms": 37.92720822255231,
+        "avg_decode_ms": 28.083823983454042,
+        "avg_extract_ms": 0.010212773405429391,
+        "avg_total_ms": 66.01103220600635,
+        "realtime_ratio": 2.4238372686049527
+      },
+      {
+        "chunk_ms": 320,
+        "chunk_samples": 7680,
+        "avg_encode_ms": 42.57361099977667,
+        "avg_decode_ms": 32.39917600553276,
+        "avg_extract_ms": 0.009953665236632029,
+        "avg_total_ms": 74.97278700530943,
+        "realtime_ratio": 4.268215345620515
+      },
+      {
+        "chunk_ms": 640,
+        "chunk_samples": 15360,
+        "avg_encode_ms": 52.95237511422278,
+        "avg_decode_ms": 39.468453789595515,
+        "avg_extract_ms": 0.010106434476458363,
+        "avg_total_ms": 92.42082890381829,
+        "realtime_ratio": 6.92484592045851
+      },
+      {
+        "chunk_ms": 1000,
+        "chunk_samples": 24000,
+        "avg_encode_ms": 59.79957864878492,
+        "avg_decode_ms": 49.03285678139784,
+        "avg_extract_ms": 0.010684999223384591,
+        "avg_total_ms": 108.83243543018276,
+        "realtime_ratio": 9.188437215865774
+      },
+      {
+        "chunk_ms": 2000,
+        "chunk_samples": 48000,
+        "avg_encode_ms": 81.10443522067119,
+        "avg_decode_ms": 73.24573154457742,
+        "avg_extract_ms": 0.010536873661395578,
+        "avg_total_ms": 154.3501667652486,
+        "realtime_ratio": 12.957549978172704
+      }
+    ],
+    "streaming": {
+      "frame_ms": 80.0,
+      "num_codebooks": 8,
+      "frames_measured": 45,
+      "encode_ms_mean": 24.4789573803751,
+      "encode_ms_p95": 32.91608301224186,
+      "decode_ms_mean": 24.33162773441937,
+      "decode_ms_p95": 35.00184199074281,
+      "total_ms_mean": 48.81058511479447,
+      "realtime_ratio": 1.6389887523751898
+    }
+  }
+}

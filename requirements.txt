@@ -1,7 +1,11 @@
-torch
-torchaudio
-transformers
-datasets[audio]
+torch==2.9.*
+torchaudio==2.9.*  # must match torch minor version (dylib symbol coupling)
+# Pinned as a set: transformers 5.x needs huggingface_hub>=1.0 but moshi
+# needs <1.0, and datasets 4.x decodes audio via torchcodec (fragile ffmpeg
+# dylib coupling). This combination is verified end-to-end (2026-07-02).
+transformers==4.57.*
+huggingface_hub==0.35.*
+datasets[audio]==3.6.*
 soundfile
 librosa
 matplotlib
@@ -12,3 +16,4 @@ pystoi
 sounddevice  # optional: for listening_test.py audio playback
 pytest
 speechbrain  # speaker similarity (ECAPA-TDNN embeddings)
+moshi  # streaming Mimi reference implementation (experiment 06 streaming arm)

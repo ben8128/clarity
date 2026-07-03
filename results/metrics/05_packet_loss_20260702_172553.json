@@ -1,0 +1,442 @@
+{
+  "experiment_id": "05_packet_loss",
+  "timestamp": "2026-07-02T17:25:53.236737",
+  "git_sha": "66f8de8e6cae2dec7e1e484dd539fc362a7034cb",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "transmit_codebooks": 8,
+    "base_bitrate_bps": 1100.0,
+    "mean_burst_len": 4,
+    "lossless_baseline": {
+      "pesq": 1.994718313217163,
+      "stoi": 0.8985455351314847
+    },
+    "bitrates": {
+      "Raw PCM 24kHz/16bit": 384000,
+      "Opus (voice, 24kbps)": 24000,
+      "Opus (low, 6kbps)": 6000,
+      "Mimi full (32 cb)": 4400.0,
+      "Mimi 8 cb": 1100.0,
+      "Mimi 8 cb + 4x redundancy": 5500.0,
+      "Mimi semantic-only": 137.5
+    },
+    "loss_matrix": [
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.0,
+        "actual_packet_loss": 0.0,
+        "arm": "A_zero_fill",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.04054054054054054,
+        "arm": "A_zero_fill",
+        "pesq": 1.6621389389038086,
+        "stoi": 0.8802526645188267
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.04054054054054054,
+        "arm": "B_repeat_last",
+        "pesq": 1.5547988414764404,
+        "stoi": 0.8599345906720766
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.04054054054054054,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.04054054054054054,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.04054054054054054,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.06756756756756757,
+        "arm": "A_zero_fill",
+        "pesq": 1.429020643234253,
+        "stoi": 0.846260005982844
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.06756756756756757,
+        "arm": "B_repeat_last",
+        "pesq": 1.4912877082824707,
+        "stoi": 0.870616891107018
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.06756756756756757,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.06756756756756757,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.06756756756756757,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.2972972972972973,
+        "arm": "A_zero_fill",
+        "pesq": 1.1684147119522095,
+        "stoi": 0.7371290064226578
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.2972972972972973,
+        "arm": "B_repeat_last",
+        "pesq": 1.1662497520446777,
+        "stoi": 0.7203060546152142
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.2972972972972973,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.299735188484192,
+        "stoi": 0.7923951646868883,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.12162162162162163,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.2972972972972973,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.5240516662597656,
+        "stoi": 0.8305484774833618,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.05405405405405406,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.2972972972972973,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.6816807985305786,
+        "stoi": 0.8660426702822165,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.02702702702702703,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.22972972972972974,
+        "arm": "A_zero_fill",
+        "pesq": 1.169904351234436,
+        "stoi": 0.7299223896480908
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.22972972972972974,
+        "arm": "B_repeat_last",
+        "pesq": 1.1540359258651733,
+        "stoi": 0.6936949047287543
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.22972972972972974,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.5786328315734863,
+        "stoi": 0.8685207698811888,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.04054054054054054,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.22972972972972974,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.8069032430648804,
+        "stoi": 0.8955325388109856,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.013513513513513514,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "uniform",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.22972972972972974,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.0,
+        "actual_packet_loss": 0.0,
+        "arm": "A_zero_fill",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.13513513513513514,
+        "arm": "A_zero_fill",
+        "pesq": 1.3708863258361816,
+        "stoi": 0.8011060206138283
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.13513513513513514,
+        "arm": "B_repeat_last",
+        "pesq": 1.2320561408996582,
+        "stoi": 0.7755024549770491
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.13513513513513514,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.284740924835205,
+        "stoi": 0.797093565123026,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.10810810810810811,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.13513513513513514,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.3268113136291504,
+        "stoi": 0.8125702402099042,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.0945945945945946,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.05,
+        "actual_packet_loss": 0.13513513513513514,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.4574356079101562,
+        "stoi": 0.8382883421455712,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.06756756756756757,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.0,
+        "arm": "A_zero_fill",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.0,
+        "arm": "B_repeat_last",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.0,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.0,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.1,
+        "actual_packet_loss": 0.0,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.994718313217163,
+        "stoi": 0.8985455351314847,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.0,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.32432432432432434,
+        "arm": "A_zero_fill",
+        "pesq": 1.1836611032485962,
+        "stoi": 0.7452910575887842
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.32432432432432434,
+        "arm": "B_repeat_last",
+        "pesq": 1.1653563976287842,
+        "stoi": 0.7551346441536427
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.32432432432432434,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.2547566890716553,
+        "stoi": 0.7959898413643708,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.2702702702702703,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.32432432432432434,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.289458155632019,
+        "stoi": 0.8014024464538915,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.24324324324324326,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.2,
+        "actual_packet_loss": 0.32432432432432434,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.3276915550231934,
+        "stoi": 0.8059083960416674,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.1891891891891892,
+        "effective_bitrate_bps": 5500.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.40540540540540543,
+        "arm": "A_zero_fill",
+        "pesq": 1.142677903175354,
+        "stoi": 0.7159714081886651
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.40540540540540543,
+        "arm": "B_repeat_last",
+        "pesq": 1.169628381729126,
+        "stoi": 0.6786474275337582
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.40540540540540543,
+        "arm": "C_redundancy_d1",
+        "pesq": 1.298472285270691,
+        "stoi": 0.7380492956170289,
+        "redundancy_depth": 1,
+        "residual_frame_loss": 0.33783783783783783,
+        "effective_bitrate_bps": 2200.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.40540540540540543,
+        "arm": "C_redundancy_d2",
+        "pesq": 1.3627991676330566,
+        "stoi": 0.7746338322667039,
+        "redundancy_depth": 2,
+        "residual_frame_loss": 0.28378378378378377,
+        "effective_bitrate_bps": 3300.0
+      },
+      {
+        "pattern": "bursty",
+        "loss_rate": 0.3,
+        "actual_packet_loss": 0.40540540540540543,
+        "arm": "C_redundancy_d4",
+        "pesq": 1.4865864515304565,
+        "stoi": 0.8418356684072504,
+        "redundancy_depth": 4,
+        "residual_frame_loss": 0.21621621621621623,
+        "effective_bitrate_bps": 5500.0
+      }
+    ]
+  }
+}

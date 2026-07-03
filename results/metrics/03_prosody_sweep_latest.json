@@ -1,0 +1,48 @@
+{
+  "experiment_id": "03_prosody_sweep",
+  "timestamp": "2026-07-02T17:25:29.076044",
+  "git_sha": "66f8de8e6cae2dec7e1e484dd539fc362a7034cb",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "correlation_threshold": 0.7,
+    "per_sample": {
+      "librispeech_baseline": {
+        "sweep": [
+          {
+            "codebooks": 1,
+            "pitch_correlation": NaN
+          },
+          {
+            "codebooks": 2,
+            "pitch_correlation": 0.9243686747207693
+          },
+          {
+            "codebooks": 4,
+            "pitch_correlation": 0.9691006422113217
+          },
+          {
+            "codebooks": 8,
+            "pitch_correlation": 0.9938116626162471
+          },
+          {
+            "codebooks": 16,
+            "pitch_correlation": 0.9942176673845278
+          },
+          {
+            "codebooks": 32,
+            "pitch_correlation": 0.9982333832785698
+          }
+        ],
+        "prosody_emerges_at": 2
+      }
+    }
+  }
+}

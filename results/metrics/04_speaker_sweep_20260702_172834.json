@@ -1,0 +1,85 @@
+{
+  "experiment_id": "04_speaker_sweep",
+  "timestamp": "2026-07-02T17:28:34.377555",
+  "git_sha": "66f8de8e6cae2dec7e1e484dd539fc362a7034cb",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "similarity_threshold": 0.7,
+    "speakers": [
+      "librispeech_1272",
+      "airplane_handheld"
+    ],
+    "sweep": {
+      "librispeech_1272": [
+        {
+          "codebooks": 1,
+          "speaker_similarity": -0.02572474628686905
+        },
+        {
+          "codebooks": 2,
+          "speaker_similarity": 0.27233439683914185
+        },
+        {
+          "codebooks": 4,
+          "speaker_similarity": 0.6452971696853638
+        },
+        {
+          "codebooks": 8,
+          "speaker_similarity": 0.7479400038719177
+        },
+        {
+          "codebooks": 16,
+          "speaker_similarity": 0.8447832465171814
+        },
+        {
+          "codebooks": 32,
+          "speaker_similarity": 0.9418821334838867
+        }
+      ],
+      "airplane_handheld": [
+        {
+          "codebooks": 1,
+          "speaker_similarity": 0.6622373461723328
+        },
+        {
+          "codebooks": 2,
+          "speaker_similarity": 0.7368745803833008
+        },
+        {
+          "codebooks": 4,
+          "speaker_similarity": 0.735427975654602
+        },
+        {
+          "codebooks": 8,
+          "speaker_similarity": 0.7791509628295898
+        },
+        {
+          "codebooks": 16,
+          "speaker_similarity": 0.7934259176254272
+        },
+        {
+          "codebooks": 32,
+          "speaker_similarity": 0.8832365274429321
+        }
+      ]
+    },
+    "identity_emerges_at": {
+      "librispeech_1272": 8,
+      "airplane_handheld": 2
+    },
+    "cross_combination": {
+      "A_orig vs cross_AB": 0.15454484522342682,
+      "B_orig vs cross_AB": 0.8272098898887634,
+      "B_orig vs cross_BA": 0.17925329506397247,
+      "A_orig vs cross_BA": 0.9279980659484863
+    }
+  }
+}

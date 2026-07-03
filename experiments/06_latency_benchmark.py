@@ -1,7 +1,14 @@
 """Experiment 06: Latency Benchmark (Detailed).
 
 Profiles per-component latency for real-time feasibility.
-Tests with varying audio chunk sizes.
+
+Two arms:
+  1. Full-context HF encode/decode at varying chunk sizes. CAVEAT: this is a
+     desktop proxy only — the HF wrapper re-runs the full (non-incremental)
+     model per chunk, so per-chunk numbers overstate steady-state cost.
+  2. True streaming Mimi via the `moshi` package (kyutai's reference
+     implementation): per-80ms-frame encode/decode latency in streaming mode.
+     This is the number that predicts phone behavior.
 """
 
 import sys
@@ -14,9 +21,74 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.codec import MimiCodec
+from src.results_io import save_metrics
 from src.utils import download_librispeech_sample
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+
+
+def benchmark_streaming(audio: np.ndarray, sr: int, n_frames: int = 50) -> dict | None:
+    """Benchmark true streaming Mimi (moshi package) per-frame latency.
+
+    Feeds 80ms (1920-sample) frames through mimi.streaming() and measures
+    per-frame encode and decode wall time.
+
+    Returns:
+        Dict of streaming latency stats, or None if moshi is unavailable.
+    """
+    try:
+        import torch
+        from huggingface_hub import hf_hub_download
+        from moshi.models import loaders
+    except ImportError as e:
+        print(f"  moshi package unavailable ({e}); skipping streaming arm.")
+        print("  Install with: pip install moshi")
+        return None
+
+    print("  Loading streaming Mimi (moshi reference implementation)...")
+    mimi_weight = hf_hub_download(loaders.DEFAULT_REPO, loaders.MIMI_NAME)
+    mimi = loaders.get_mimi(mimi_weight, device="cpu")
+    mimi.set_num_codebooks(8)
+
+    frame_size = int(mimi.sample_rate / mimi.frame_rate)  # 1920 samples = 80ms
+    frame_ms = 1000 * frame_size / mimi.sample_rate
+
+    # Prepare frames
+    needed = n_frames * frame_size
+    if len(audio) < needed:
+        audio = np.tile(audio, int(np.ceil(needed / len(audio))))
+    frames = torch.from_numpy(audio[:needed]).reshape(n_frames, 1, 1, frame_size)
+
+    encode_times, decode_times = [], []
+    with torch.no_grad(), mimi.streaming(1):
+        for i in range(n_frames):
+            start = time.perf_counter()
+            codes = mimi.encode(frames[i])
+            encode_times.append(time.perf_counter() - start)
+
+            start = time.perf_counter()
+            _ = mimi.decode(codes)
+            decode_times.append(time.perf_counter() - start)
+
+    # Skip warmup frames
+    enc = np.array(encode_times[5:]) * 1000
+    dec = np.array(decode_times[5:]) * 1000
+    stats = {
+        "frame_ms": frame_ms,
+        "num_codebooks": 8,
+        "frames_measured": len(enc),
+        "encode_ms_mean": float(enc.mean()),
+        "encode_ms_p95": float(np.percentile(enc, 95)),
+        "decode_ms_mean": float(dec.mean()),
+        "decode_ms_p95": float(np.percentile(dec, 95)),
+        "total_ms_mean": float(enc.mean() + dec.mean()),
+        "realtime_ratio": float(frame_ms / (enc.mean() + dec.mean())),
+    }
+    print(f"  Streaming per-{frame_ms:.0f}ms-frame: "
+          f"encode {stats['encode_ms_mean']:.1f}ms (p95 {stats['encode_ms_p95']:.1f}), "
+          f"decode {stats['decode_ms_mean']:.1f}ms (p95 {stats['decode_ms_p95']:.1f}), "
+          f"total {stats['total_ms_mean']:.1f}ms -> {stats['realtime_ratio']:.1f}x realtime")
+    return stats
 
 
 def benchmark_chunk(codec: MimiCodec, audio: np.ndarray, sr: int, chunk_ms: int, n_runs: int = 10):
@@ -104,13 +176,25 @@ def run_experiment():
     print("=" * 80)
 
     # Real-time feasibility assessment
-    print("\nReal-time feasibility:")
+    print("\nReal-time feasibility (full-context proxy — overstates steady-state cost):")
     for r in results:
         feasible = r["avg_total_ms"] < r["chunk_ms"]
         status = "FEASIBLE" if feasible else "TOO SLOW"
         headroom = r["chunk_ms"] - r["avg_total_ms"]
         print(f"  {r['chunk_ms']}ms chunks: {status} "
               f"(headroom: {headroom:+.1f}ms)")
+
+    # Streaming arm — the number that predicts phone behavior
+    print("\n--- Streaming Mimi (per-80ms-frame, 8 codebooks) ---")
+    streaming = benchmark_streaming(audio, sr)
+
+    save_metrics(
+        "06_latency",
+        {
+            "full_context_proxy": results,
+            "streaming": streaming,
+        },
+    )
 
     # Plot
     try:
