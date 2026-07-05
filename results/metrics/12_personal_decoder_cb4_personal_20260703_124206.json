@@ -1,0 +1,35 @@
+{
+  "experiment_id": "12_personal_decoder_cb4_personal",
+  "timestamp": "2026-07-03T12:42:05.965329",
+  "git_sha": "1af600ef7db69583196bebcd6e1acf533b46e1b3",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "arm": "cb4_personal",
+    "per_message": [
+      {
+        "sim": 0.48843035101890564,
+        "dnsmos": 3.1683736920614605,
+        "wer": 0.20588235294117646,
+        "f0_corr": 0.9819714245605843,
+        "source_dnsmos": 2.8693795970275056,
+        "id": "recording_0_000125300"
+      }
+    ],
+    "means": {
+      "sim": 0.48843035101890564,
+      "dnsmos": 3.1683736920614605,
+      "wer": 0.20588235294117646,
+      "f0_corr": 0.9819714245605843,
+      "source_dnsmos": 2.8693795970275056,
+      "beats_microphone": true
+    }
+  }
+}

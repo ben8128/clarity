@@ -1,0 +1,48 @@
+{
+  "experiment_id": "12_summary",
+  "timestamp": "2026-07-03T12:42:07.137029",
+  "git_sha": "1af600ef7db69583196bebcd6e1acf533b46e1b3",
+  "device": "Bens-MacBook-Air-2.local",
+  "versions": {
+    "python": "3.13.1",
+    "torch": "2.9.1",
+    "transformers": "4.57.6",
+    "numpy": "2.2.6",
+    "pesq": "unknown",
+    "pystoi": "0.4.1"
+  },
+  "metrics": {
+    "dataset": "data/dryrun",
+    "n_codebooks": 4,
+    "tier": "5min",
+    "device": "cpu",
+    "checkpoint": "/Users/ben/code/clarity/results/checkpoints/12_personal_cb4_5min_20260703_124124.pt",
+    "training": {
+      "steps": 5,
+      "initial_loss": 2.778587579727173,
+      "final_loss": 2.1992221593856813,
+      "loss_curve": [],
+      "batch_size": 2,
+      "window_frames": 24,
+      "lr": 5e-05
+    },
+    "arms": {
+      "wire_cb4": {
+        "sim": 0.5276832580566406,
+        "dnsmos": 3.1224135417534815,
+        "wer": 0.23529411764705882,
+        "f0_corr": 0.9797385104397439,
+        "source_dnsmos": 2.8693795970275056,
+        "beats_microphone": true
+      },
+      "cb4_personal": {
+        "sim": 0.48843035101890564,
+        "dnsmos": 3.1683736920614605,
+        "wer": 0.20588235294117646,
+        "f0_corr": 0.9819714245605843,
+        "source_dnsmos": 2.8693795970275056,
+        "beats_microphone": true
+      }
+    }
+  }
+}

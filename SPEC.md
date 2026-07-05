@@ -121,10 +121,69 @@ similarity + listening scores vs Mimi 8 cb. Go/no-go on tier C having voice.
 | A loss arm keeps ΔSTOI < 0.05 at 10% loss | ✅ arms B & C |
 | Golden vectors committed | ✅ |
 
-## Phase 2 (next): iPhone-to-iPhone voice note
+## Phase 2 (parked 2026-07-03): iPhone-to-iPhone voice note
 
 `ios/ClarityLab` (SwiftUI, vendored moshi-swift MLX) + `server/relay.py`
 (websocket, pairing-code rooms). Milestones: M2.1 codec-on-device vs golden
 vectors (go/no-go; fallback rustymimi via C FFI), M2.2 mic→encode→decode→speaker
 loopback with per-frame instrumentation, M2.3 two-phone note over the relay
 under Network Link Conditioner. Details in the project plan.
+
+**Parked** in favor of the R-track (below) — Ben pivoted the project back to
+its founding vision on 2026-07-03.
+
+## R-track: Receiver-Side Studio Reconstruction (active)
+
+Goal: send coarse Mimi tokens (+ transcript), render "a professional studio
+recording of the sender" on the receiver via a per-speaker voice model.
+Async-messaging framing; latency/bitrate deprioritized. Key design rule:
+**train on (degraded input → studio target) pairs** so reconstruction
+denoises by construction (01c showed Mimi itself does not denoise).
+
+Shared eval (experiment 10): SIM vs real recordings ≥ 0.80, DNSMOS ≥ the
+degraded source ("beats the microphone"), WER vs source transcript, F0
+correlation ≥ 0.90 ("the take is preserved"). Every route is judged by the
+same harness and ends with a listening page.
+
+Waves (approved plan; cloud GPU fine-tunes budgeted $50-300):
+
+| wave | experiment | route | status |
+|---|---|---|---|
+| 0 | 10 eval harness + `src/voice_dataset.py` + `src/degrade.py` | — | DONE (dry-run) |
+| 1 | 11 decode-then-convert (kNN-VC) | C | DONE (dry-run) — validated |
+| 2 | 12 personal Mimi decoder fine-tune | D | smoke-tested (dry-run) |
+| 3 | token-completion / resynthesis bake-off | E | planned |
+| 4 | e2e demo + blind family test | — | planned |
+
+Real runs of every wave wait on Ben's podcast studio recordings landing in
+`audio/podcast/` (then `python -m src.voice_dataset --input audio/podcast/
+--output data/ben`). Research: ~3 h is the A+ tier, 30 min the floor.
+
+### Experiment 10: Reconstruction Eval Harness — DONE (dry-run)
+
+Self-test orderings all hold (clean anchor DNSMOS 3.50 > source 2.81;
+passthrough F0 corr 1.000; cb32 > cb4 everywhere). Gap to close: Mimi-32 of
+a degraded message reaches only DNSMOS 2.94.
+
+### Experiment 11: Decode-then-Convert (Route C) — DONE (dry-run)
+
+Zero-training arms: coarse decode → kNN-VC toward the speaker's reference
+bank. Headline: **cb4 wire (550 bps) + kNN-VC matches Mimi-32 speaker
+similarity at 1/8th the bits and beats the source microphone** (DNSMOS 3.22
+vs 2.76). Costs: WER 0.20 from the cb4 wire (try cb8), F0 corr 0.844.
+
+### Experiment 12: Personal Mimi Decoder (Route D) — SMOKE-TESTED (dry-run)
+
+The thesis experiment. Wire stays universal (frozen encoder + quantizer);
+fine-tune the receiver's decoder path (upsample + decoder_transformer +
+decoder, ~40M params) on this speaker's (degraded → clean) pairs with
+multi-resolution mel loss. Same tokens, personal rendering; quality should
+scale with training data (NVIDIA nano-codec precedent). No adversarial loss
+in the prototype; GAN polish is a cloud-GPU follow-up if the direction
+holds. `src/personal_decoder.py` + `experiments/12_personal_decoder.py`.
+
+### Experiment 13+ (Wave 3): Token-completion / resynthesis bake-off — PLANNED
+
+Predict fine acoustic tokens from coarse ones with a per-speaker prior
+(vs Route C/D winners); candidates include a small token LM and
+resynthesis via personal TTS conditioned on the transcript + prosody.
